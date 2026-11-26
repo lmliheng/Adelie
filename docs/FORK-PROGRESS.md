@@ -3999,6 +3999,13 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       做不成载体。现在那句话留在发起的那个按钮旁边、表格下面那一行（`role="alert"`、危险色、限两行、悬停看
       全文），措辞是「清空没有开始」加服务端的理由；每次尝试开始与筛选条件改变时清掉，读通了照旧打开确认框。
       见「第三百四十八轮」一节。
+- [x] **7.218 回复里的表格在窄屏下不再被挤成一字一行**（**2026-11-26 第三百四十九轮**落地，提交见
+      「已完成的轮次」；`packages/ui` 1 个样式文件 ＋ 1 条新用例 ＋ changelog 一对 —— **不碰接口、不碰服务端、
+      无新依赖**）：`.md-body table` 早就写着「宽表格在正文里横向滚动、不把整页顶宽」，但只做了一半 —— 表格布局
+      先把每一列压向它的**最小内容宽度**，压不动了才开始溢出，而 CJK 字符串的最小内容宽度是**一个字**。390 px
+      实测：一条四列表的最后一列被压成 36 px 宽、十一行高，而正文一直没有东西可滚（`scrollWidth == clientWidth`）。
+      现在单元格有一道 6rem 下限，列宽压到这里就停、溢出真的发生，表格自带的滚动盒才成为它本该是的东西；下限挂在
+      单元格上而不是给表格定宽，本来就放得下的表格布局一字未变。见「第三百四十九轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7246,6 +7253,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.215 | **停靠面板选择器里开的终端起不来时，原因留在选择器下面，不再只活六秒**（**2026-11-26 第三百四十六轮**落地；`packages/web` 2 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 5 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/dock/dock-terminal.ts` 新增模块级 store（`subscribeTerminalCreateRefusal` / `readTerminalCreateRefusal` / `clearTerminalCreateRefusal`）与纯函数 `terminalCreateRefused(detail)`（响应体带 `error.message` 就念它，否则保留整行详情）；`createShellInDock` 失败时，若 `dockViews()` 里有一个没有标签页的视图（即选择器在屏）就把句子写进 store，否则照旧 `toastError`；`features/dock/dock-panel.tsx` 在选择器下面画那一行（`role="alert"`、`data-testid="dock-terminal-create-refusal"`、危险色、限两行、悬停看全文），有标签页取代选择器时经 `clearTerminalCreateRefusal` 收走；`lib/strings{,-en}.ts` 各加 `terminal.createRefused(reason)`。头注释那句「没有标签页就没有可挂的表面」改成两种情形 | 见「第三百四十六轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4071 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 364 / 4066） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 6 个改动文件 0 警告 0 错误、`prettier --check` 8 个文件干净、`git diff --check` 干净；新单测 **5 passed**；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「无法打开终端：Could not start a shell: posix_spawn failed (mock)」、选择器仍在、通知区 0 条、7 秒后仍在、恢复后一次成功把句子清掉）；**改前 dist 反证 1 failed**（`dock-terminal-create-refusal` 元素不存在）；`dock.spec.mjs` 回归 **10 passed**（含「failed shell create surfaces as a toast」那条，快捷键路径没变）；rebase 到 `7b58cbd66` 后重跑：六包 `typecheck` 六个 `Done`、web **365 / 4071 + 2 跳过**、新 spec **1 passed**、`dock.spec` **10 passed**；探针量到句子在选择器正下方（y=872，选择器 589–872）、console 只有既有的 `/machines` 403 与本轮故意造的 500 两条 + 本模块自己的 `console.error`、pageerror 0 条） | `41ff5451a` |
 | 2026-11-26 | 7.216 | **`input_subagent` 留在后台的续跑轮会回报完成**（上游 `992c986e0` `#1864` 移植，照改动落、不是合分支；本树落下 8 个文件（3 改源码 + 1 改用例 + 2 份文档 + changelog 一对）：`packages/core/src/environment/tools/run-subagent.ts`（导出的 `leaveSubagentUnattended` 把「完成回报 + 常驻审批出口 + 实时消息转发」收在一处，后台启动与前台转后台共用）、`input-subagent.ts`（`startedRound` 标记这次调用真正发起的一轮，窗口结束时仍在跑就交给它并告知完成会以 `[background_task_done]` 送达）、`subagent/session.ts`（注释口径改为「无人看管的会话」）、用例 +151 行、`packages/docs/content/tools.{zh,en}.md` 各一句 —— **不碰接口、不碰界面、无新依赖**；接手 07:00 那一轮被 `user_abort` 中止的半成品，整片留底 `r349/r345-halfwork.patch`）：槽位被腾走后又恢复的子会话、一直只靠轮询访问的子会话，`input_subagent` 发起的续跑轮跑完时父 Session 一声不响 —— 只有以 `run_in_background` 启动、并且一直没让出过槽位的子会话例外。现在这样的一轮与后台启动拿到的东西相同。见「第三百四十七轮」一节 | 见「第三百四十七轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **364 文件 / 4066 通过 / 2 跳过** · docs **8 / 62**；`oxlint` **0 警告 0 错误**、改动 4 个 ts 文件 `prettier --check` 干净；**反证（单测）**：3 个源码文件退回 `HEAD` → `test/background-execution.test.ts` **2 failed / 34 passed**，拷回 → **36 passed**；上游 `992c986e0` 与本树 diff 逐行对过，8 文件名单一致、差异只在基座命名与行号；本笔不改界面，未起服务 / 未开浏览器，端口与数据根一个没碰） | `46615d48b` |
 | 2026-11-26 | 7.217 | **「清空」第一步没读出记录数时，原因留在那个按钮旁边，不再只活六秒**（**2026-11-26 第三百四十八轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 4 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/usage/errors-panel.tsx` 的 `openClear` 在读到计数（`offset=0&limit=1`，确认框要报的那个数）失败时不再 `toastError`，改写入新的 `countRefusal` 状态；新增导出的 `ClearCountRefusal` 画在页脚「清空」按钮与翻页器之间（`role="alert"`、`data-testid="errors-clear-count-refusal"`、危险色、`line-clamp-2`、悬停看全文、`flex-1 min-w-0` 占可用宽度），每次尝试开始与筛选条件变化时清空；`lib/strings{,-en}.ts` 各加 `usage.errorsClearCountRefused(reason)`（「清空没有开始」＋理由） | 见「第三百四十八轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；合并远端两笔后逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4075 通过 / 2 跳过**（+4 条即本笔，基线 4071） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 5 个文件 0 警告 0 错误、`prettier --check` 7 个文件干净、`git diff --check` 干净；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「没能读出要清空的记录数，清空没有开始：errors store is closed」、就在按钮右边同一行（按钮 x=325–367，句子 x=375）、确认框 0 个、通知区 0 条、7 秒后仍在、放开拦截再按确认框打开且句子收走）；**改前 dist 反证 1 failed**（`errors-clear-count-refusal` 元素不存在）；`errors-ignore.spec.mjs` 回归 **5 passed**（合并后在 `9c707fd3d` 上重跑：新 spec **1 passed** 与那 5 条 **5 passed**）；探针 console 只有既有的 `/machines` 403 与本轮故意造的 500 两条、pageerror 0 条） | `ad51fbfef` |
+| 2026-11-26 | 7.218 | **回复里的表格在窄屏下不再被挤成一字一行**（**2026-11-26 第三百四十九轮**落地；`packages/ui` 1 个样式文件 ＋ 1 条新用例 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`components/content/prose/prose.css` 的 `.md-body :where(th, td)` 加 `min-width: 6rem` —— `.md-body table` 的 `display:block; overflow-x:auto` 只做了一半：表格布局先把列压向最小内容宽度、压不动才溢出，而 CJK 文字的最小内容是一个字，390 px 上四列表的最后一列因此被压成 36 px 宽、十一行高，正文却没东西可滚。下限挂在单元格上而不是给表格定宽，本来就放得下的表格布局一字未变；`test/prose.test.ts` 一条新用例把「表格有滚动盒 ＋ 单元格有 rem 下限」这一对规则钉住 | 见「第三百四十九轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1118**（+1 即本笔）· cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **365 文件 / 4075 通过 / 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；**反证（单测）**：CSS 退回 `HEAD` → 新用例 **1 failed**（`min-width` 那条），放回 → `test/prose.test.ts` **23 passed**；**真浏览器两态**（真服务端 8981 ＋ mock 8982 ＋ `/usr/bin/chromium`，数据根 `/root/adelie-fork-data/r349-a`）：390 px 改前 32/289/36 px、**11 行**、`scrollWidth == clientWidth`（不滚）→ 改后 96/275/96 px、最多 **4 行**、468 > 358 **可横向滚动**；360 / 320 同形；1280 px 两态都 768 宽、不滚（列宽分配 42/582/143 → 96/526/145）；**散文型表格**（单元格是一句英文）改后 1280 仍 2 行贴合、390 靠换行贴合不滚；console **0 error**、pageerror **0**、0 条 4xx） | `566feea0d` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35217,3 +35225,79 @@ changelog 一对，**不碰接口、不碰服务端、无新依赖**）：
   `packages/web/src/lib/strings{,-en}.ts`、`packages/web/test/errors-panel.test.ts`、
   `packages/web/e2e/errors-clear-count-refusal.spec.mjs`、changelog 一对；台账（条目 7.217、上表那一行、
   本节）随本文件另起一笔。
+
+## 第三百四十九轮：回复里的表格在窄屏下不再被挤成一字一行（2026-11-26，条目 7.218）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `2fc2e2eb2`（第三百四十八轮 / 7.217）；
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。没有切分支、没碰 `legacy/main`、
+没推 upstream。`git remote -v` 里 `upstream` 指向 `/root/penguin-harness`，而那个目录本机已经不在（外部镜像没了），
+所以这一轮要说上游就先按 URL 现拉（下面确实这么做了）。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、3.6 要模型 key；
+4.1–4.3 明令不动；5.6 / 5.10 要拍板），第 7 节全勾。上一轮点名的那一族（仍以 `toastError` 收尾的几处）这一轮逐个
+数过，剩下的都成立（卡片 / 对话框 / 面板里已经就地写着原因）。上游按 URL 现拉 `main` 到
+`refs/adelie-tmp/up-20261126`：`93b9d5056` 之后只有 5 笔（发版、CI、桌面壳签名、`#1870` 模块哨兵改注册表键、
+`#1866` 流式应答符号），**没有一笔能整块落** —— `#1870` 在本树只对上 `run-stream.ts` 的 `KEEPALIVE` 一处，而它在本树
+是同一个模块实例里写入（第 267 行 push）与比较（第 302 行）的，不是上游那个「同一包被链接两份」的场景，真实收益为零；
+`#1866` 要的 `library/http` 本树没有。于是改走「把真界面量一遍」：起真服务端 ＋ 真浏览器，把 11 个路由在 320 / 390
+下逐个量横向溢出并按页截图。
+
+**为什么它是真的**：页面级溢出一处没有（320 那几处都在 `overflow-x:auto` 的盒子里），但截图里是另一个更糟的东西 ——
+回复中那条四列 Markdown 表格在 390 px 下最后一列被压成一条一字的竖杠（实测 32 px / 36 px 宽、**十一行**高）。
+`.md-body table` 那条注释写的是「宽表格在正文里横向滚动、不把整页顶宽」，可它只设了 `display:block; overflow-x:auto`：
+表格布局总是先把每一列压向它的**最小内容宽度**，压不动了才溢出，而 CJK 文字的最小内容宽度就是**一个字** ——
+所以那块滚动盒从头到尾没有东西可滚（`scrollWidth == clientWidth`）。手机上的模型回复里表格很常见（这一条就是 mock
+自己的回复），读不了就是读不了。
+
+**做了什么**（`packages/ui` 1 个样式文件 ＋ 1 条新用例 ＋ changelog 一对，**不碰接口、不碰服务端、无新依赖**）：
+
+- `packages/ui/src/components/content/prose/prose.css`：`.md-body :where(th, td)` 加 `min-width: 6rem`，注释写清
+  为什么单有滚动盒不够（先压列、后溢出；CJK 的最小内容是一个字）、为什么下限挂在单元格上而不给表格定宽（放得下的
+  表格布局一字未变 —— 宽度仍由内容决定，单元格里是一段话的表格照旧换行）。
+- `packages/ui/test/prose.test.ts`：「the content stylesheet」那一组加一条用例，把**这一对**规则钉住（表格上是滚动盒、
+  单元格上是 rem 下限），少任何一半都是回退。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1118**（+1 即本笔，
+  基线 1117）· cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **365 文件 / 4075 通过 / 2 跳过**。
+- `oxlint` 改动的 ts 文件 **0 警告 0 错误**；`prettier --check` 两个文件干净；`git diff --check` 干净；
+  `git diff --stat` = prose.css +10、prose.test.ts +22。
+- **反证（单测）**：CSS 退回 `HEAD`、用例留着 → `test/prose.test.ts` **1 failed**（`expected '.md-body :where(th, td)
+  {\n  border: …' to match /min-width:\s*[\d.]+rem/`），把 CSS 放回 → **23 passed**。
+- **真浏览器两态**（真服务端 8981 ＋ 仓库自带 mock 模型 8982 ＋ `/usr/bin/chromium`，一次性数据根
+  `/root/adelie-fork-data/r349-a`；空数据根不需要模型 key —— 即 3.6 那个卡点）：把**改前**产物（`git checkout` 掉 CSS
+  后重建 web）挂上量一遍，再把改后产物挂上量一遍，同一份探针：
+
+  | 宽度 | 改前 | 改后 |
+  | --- | --- | --- |
+  | 390 | 列 32 / 289 / 36 px，最长 **11 行**，`scrollWidth 358 == clientWidth 358`（不滚） | 列 96 / 275 / 96 px，最长 **4 行**，`scrollWidth 468 > clientWidth 358`（可滚） |
+  | 360 | 列 31 / 275 / 31 px，11 行，只滚 10 px | 96 / 275 / 96 px，4 行，滚 140 px |
+  | 320 | 列 31 / 275 / 31 px，11 行 | 96 / 275 / 96 px，4 行 |
+  | 1280 | 列 42 / 582 / 143 px，表格 768 宽、不滚 | 列 96 / 526 / 145 px，表格仍 768 宽、不滚 |
+
+  页面级 `documentElement.scrollWidth` 四个宽度下都等于视口宽（1280 / 390 / 360 / 320），改动没有把页面顶宽。
+- **散文型表格没有被误伤**（同一页面注入一条三列、每格一句话的英文表格）：1280 下 2 行贴合、不滚；390 下靠换行贴合
+  （161 / 132 px 两列）、不滚 —— 该换行的表仍然换行。
+- **真看一眼 ＋ console**：1280 与 390 两宽度的整页截图都看过（`after/shots/console-{1280,390}.png`），表格列可读、
+  第三列在 390 下落在横向滚动里；两宽度 console **0 error**、pageerror **0 条**、**0 条 4xx**。
+- 端口只用 8981 / 8982（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r349-a`，探针 / 两态产物 / 截图都在 scratchpad 的 `r349/` 下
+  （`packages/web/dist` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 表格在手机上能横向滑，但**没有任何提示**（没有滚动条，也没有右侧渐隐）。要做得先定口径：加一条渐隐，还是给超宽的
+  表格加一行「左右可滑动」的脚注 —— 这一轮没有量到读者真的找不到它的证据，留着当候选。
+- `packages/docs/src/styles.css` 自己有一份 `.md-body`（独立样式表），它的表格没有滚动盒；文档以拉丁文为主，按 2.5 的
+  口径文档站留到发布期一起看，这一轮没动。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/AgentCode` 一律没碰；`/root/penguin-harness` 已不在本机，
+  本轮没有依赖它（上游那一趟是按 URL 现拉的）。
+
+### 提交
+
+- 代码一笔 **`566feea0d`**：`packages/ui/src/components/content/prose/prose.css`、
+  `packages/ui/test/prose.test.ts`、changelog 一对；台账（条目 7.218、上表那一行、本节）随本文件另起一笔。
