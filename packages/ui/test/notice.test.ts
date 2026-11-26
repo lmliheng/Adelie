@@ -42,7 +42,10 @@ describe("Notice", () => {
         children: "Version 0.3.0 is available.",
       }),
     );
-    expect(html).toMatch(/data-slot="icon" aria-hidden="true"[^>]*><svg/);
+    expect(html).toMatch(/data-slot="lead" class="[^"]*\bitems-start\b/);
+    expect(html).toMatch(
+      /data-slot="icon" aria-hidden="true" class="[^"]*\bmin-h-\[1lh\][^"]*"[^>]*><svg/,
+    );
     expect(html).toContain('<p data-slot="title" class="font-medium">Update</p>');
     expect(html).toContain('<div data-slot="body">Version 0.3.0 is available.</div>');
     expect(html).toMatch(/data-slot="actions"[\s\S]*>View<\/button>/);

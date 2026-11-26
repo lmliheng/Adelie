@@ -152,7 +152,7 @@ const ACTIVITY_KINDS = new Set(["thinking", "tool"]);
 const ACTIVITY_STATES = new Set(["running", "done", "error"]);
 const ACTIVITY_SLOTS = new Set(["label", "detail", "progress", "mark", "toggle", "toggle-end"]);
 const NOTICE_TONES = new Set(["info", "success", "warning", "danger", "neutral"]);
-const NOTICE_SLOTS = new Set(["icon", "title", "body", "actions"]);
+const NOTICE_SLOTS = new Set(["lead", "icon", "title", "body", "actions"]);
 const STREAM_STATES = new Set(["streaming", "done"]);
 const STREAM_SLOTS = new Set(["caret"]);
 /** A chart's parts, wherever a chart's children are written (a mark component draws into the frame's svg). */

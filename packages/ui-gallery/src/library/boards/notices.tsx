@@ -76,6 +76,9 @@ export function NoticesBoard() {
           <Notice tone="info" variant="inline" dismiss={{ onClick: noop }}>
             {t.texts.info}
           </Notice>
+          <Notice tone="attention" variant="inline" glyph={<Dot tone="attention" />}>
+            <span className="whitespace-pre-line">{t.wrappedBody}</span>
+          </Notice>
         </div>
       </BoardGroup>
       <BoardGroup title={t.todo}>

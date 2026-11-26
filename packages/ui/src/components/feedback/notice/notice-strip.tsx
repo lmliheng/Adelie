@@ -11,8 +11,10 @@
  * It carries the `ui-notice` hook, so a theme can render notices its own way — a floating card
  * with a tone dot, a console status line with a tone tag — without a call site knowing.
  * `data-tone` names the tone in the hook's words ({@link NOTICE_TONE}). Children may mark their
- * parts with `data-slot`: `"body"` for the text, `"title"` for a heading, `"actions"` for the
- * buttons, and `"icon"` for a mark the caller draws before its text (a dot, a glyph). A mark
+ * parts with `data-slot`: `"lead"` for the block holding the mark and the text (a theme that draws
+ * its own tone mark rides that block's first line), `"body"` for the text, `"title"` for a heading,
+ * `"actions"` for the buttons, and `"icon"` for a mark the caller draws before its text (a dot, a
+ * glyph). A mark
  * belongs in that slot: a theme that draws its own tone mark hides the slot, so a mark left
  * outside it would show twice. An action's own glyph, inside its button, is not the notice's
  * mark. (The web app's `notice-chart-hooks` test holds every call site to this.)
