@@ -107,6 +107,15 @@ async function startFakeProvider(options: { refuse?: number } = {}): Promise<Fak
   };
 }
 
+/** Waits until `frames` holds more than `index` frames, and hands back that one. */
+async function awaitFrame(frames: Frame[], index: number): Promise<Frame> {
+  for (;;) {
+    const frame = frames[index];
+    if (frame !== undefined) return frame;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
 describe("real-time voice settings", () => {
   let t: TestApp;
   let admin: ReturnType<typeof apiClient>;
@@ -368,11 +377,44 @@ describe("the realtime relay", () => {
     pointAt(provider);
     const { ws } = await open();
     const client = ws as WebSocket;
+    const frames: Frame[] = [];
+    client.on("message", (data) => frames.push(JSON.parse(data.toString()) as Frame));
+    const frame = await awaitFrame(frames, 0);
+    expect(frame.type).toBe("proxy.error");
+    expect(String(frame.message)).toContain("401");
+    // The page says this in the reader's language: the frame names the failure and carries the
+    // provider's answer, rather than a sentence only an English window could show.
+    expect(frame.code).toBe("upstream_rejected");
+    expect(String(frame.detail)).toContain("HTTP 401");
+    // One refusal, not two: closing the socket that never finished its handshake reports an error
+    // of its own, and that vaguer answer used to arrive last and overwrite this one.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(frames.filter((f) => f.type === "proxy.error")).toHaveLength(1);
+    client.close();
+  });
+
+  it("names a provider it cannot reach, with nothing in detail", async () => {
+    // A port that was free a moment ago: the upstream connection is refused outright, which is the
+    // frame's other half — and it says so in a code, not in the sentence an English window happens
+    // to be able to show.
+    const closed = createServer();
+    await new Promise<void>((resolve) => closed.listen(0, "127.0.0.1", resolve));
+    const { port } = closed.address() as AddressInfo;
+    await new Promise<void>((resolve) => closed.close(() => resolve()));
+    t.deps.serverSettingsRepo.setRealtimeSettings({
+      baseUrl: `http://127.0.0.1:${port}`,
+      model: DEFAULT_REALTIME_MODEL,
+      voice: "Tina",
+      apiKey: "sk-deployment",
+    });
+    const { ws } = await open();
+    const client = ws as WebSocket;
     const frame = await new Promise<Frame>((resolve) =>
       client.once("message", (data) => resolve(JSON.parse(data.toString()) as Frame)),
     );
     expect(frame.type).toBe("proxy.error");
-    expect(String(frame.message)).toContain("401");
+    expect(frame.code).toBe("upstream_unreachable");
+    expect(frame.detail).toBe("");
     client.close();
   });
 

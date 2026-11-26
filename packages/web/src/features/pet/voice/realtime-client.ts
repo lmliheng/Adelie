@@ -15,6 +15,23 @@ import type { RealtimeEvent } from "./types";
 /** The path this app's server upgrades for a call. */
 const REALTIME_PATH = "/api/realtime";
 
+/**
+ * Why a call never got its handshake: the socket could not be opened at all (a refused upgrade —
+ * no key configured, a session that is gone — or a network that is not there), or the other end
+ * closed it first. The two read differently to a person, and the sentence is the page's to choose
+ * (see call-failure.ts): this transport runs in a window whose language it does not know.
+ */
+export type RealtimeConnectFailure = "connect_failed" | "closed";
+
+/** A handshake that did not happen, named by the reason rather than by a sentence. */
+export class RealtimeConnectError extends Error {
+  constructor(readonly reason: RealtimeConnectFailure) {
+    // The message is for a log or a fallback that has no dictionary: English, and no guess at why.
+    super(`realtime: the call did not connect (${reason})`);
+    this.name = "RealtimeConnectError";
+  }
+}
+
 export interface RealtimeClientOptions {
   /** Every frame the provider sent, already parsed. */
   onEvent: (event: RealtimeEvent) => void;
@@ -40,10 +57,10 @@ export class RealtimeClient {
     this.ws = ws;
     return new Promise<void>((resolve, reject) => {
       let settled = false;
-      const fail = (message: string): void => {
+      const fail = (reason: RealtimeConnectFailure): void => {
         if (settled) return;
         settled = true;
-        reject(new Error(message));
+        reject(new RealtimeConnectError(reason));
       };
       ws.onopen = () => {
         settled = true;
@@ -65,12 +82,12 @@ export class RealtimeClient {
           this.options.onEvent(frame as RealtimeEvent);
         }
       };
-      ws.onerror = () => fail("连不上语音服务，检查一下网络。");
+      ws.onerror = () => fail("connect_failed");
       ws.onclose = (event: CloseEvent) => {
         this._opened = false;
         // Before the handshake this is how a refusal arrives (no key configured, a lost session);
         // after it, it is a call that ended, which the caller hears about through onClose alone.
-        if (!settled) fail(event.reason || "连接被服务端关闭了。");
+        if (!settled) fail("closed");
         this.options.onClose(event.reason ?? "");
       };
     });

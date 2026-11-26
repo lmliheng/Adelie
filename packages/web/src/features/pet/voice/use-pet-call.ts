@@ -14,7 +14,14 @@
  * one of them for a meter that cannot show the difference.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { S } from "../../../lib/strings";
 import { MicCapture, Player } from "./audio";
+import {
+  closedCallText,
+  connectFailureText,
+  providerErrorText,
+  proxyErrorText,
+} from "./call-failure";
 import { RealtimeClient } from "./realtime-client";
 import { LIVE_CALL_STATES } from "./types";
 import type { CallStatus, CallTurn, RealtimeEvent } from "./types";
@@ -156,14 +163,12 @@ export function usePetCall(options: PetCallOptions): PetCall {
         }
 
         case "error": {
-          const err = event.error as Record<string, unknown> | undefined;
-          const message = typeof err?.message === "string" ? err.message : "";
-          setError(message !== "" ? message : "语音服务返回了一个错误。");
+          setError(providerErrorText(event));
           break;
         }
 
         case "proxy.error":
-          setError(typeof event.message === "string" ? event.message : "语音服务连接失败。");
+          setError(proxyErrorText(event));
           setStatus("error");
           break;
 
@@ -197,10 +202,12 @@ export function usePetCall(options: PetCallOptions): PetCall {
 
     const client = new RealtimeClient({
       onEvent: handleEvent,
-      onClose: (reason) => {
+      onClose: () => {
         if (closingRef.current) return;
         setStatus("ended");
-        if (reason !== "") setError(reason);
+        // The reason the socket names is a token, not a sentence (see closedCallText), and it used
+        // to overwrite the refusal that had just explained the call.
+        setError((previous) => closedCallText(previous));
         teardown();
       },
     });
@@ -212,7 +219,7 @@ export function usePetCall(options: PetCallOptions): PetCall {
       } catch (err) {
         clientRef.current = null;
         setStatus("error");
-        setError(err instanceof Error ? err.message : "连不上语音服务。");
+        setError(connectFailureText(err));
         teardown();
         return;
       }
@@ -227,7 +234,7 @@ export function usePetCall(options: PetCallOptions): PetCall {
         // A refused microphone is not a dead call: the pet's answer is still audible, and the
         // stage says the microphone is the half that is missing.
         setMuted(true);
-        setError("没有拿到麦克风权限，只能听不能说。");
+        setError(S.pet.callNoMic);
       }
     })();
   }, [handleEvent, options.configured, options.unavailable, teardown]);

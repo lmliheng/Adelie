@@ -1457,6 +1457,21 @@ export const zh = {
     callUnmute: "取消静音",
     /** The call button where no key is stored — the admin has one place to fix it, and it is named. */
     callNotConfigured: "还没配置实时语音：请管理员在「设置 › 服务器 › 实时语音」里填上密钥。",
+    /**
+     * The ways a call fails, in this dictionary rather than in the transport or the relay: those
+     * deal in codes (the socket did not open, the server closed it, the provider refused the key),
+     * and a sentence belongs to the reader's language — a window in English must not be handed a
+     * Chinese one, nor the other way round.
+     */
+    callConnectFailed: "连不上语音服务，检查一下网络。",
+    callClosed: "连接被服务端关闭了。",
+    callServiceError: "语音服务返回了一个错误。",
+    callServiceFailed: "语音服务连接失败。",
+    callUnreachable: "连不上语音服务。",
+    /** `detail` is what the provider answered — an HTTP status, or its own words for the refusal. */
+    callRejected: (detail: string): string =>
+      detail === "" ? "语音服务拒绝了这次连接。" : `语音服务拒绝了这次连接（${detail}）`,
+    callNoMic: "没有拿到麦克风权限，只能听不能说。",
   },
 
   common: {

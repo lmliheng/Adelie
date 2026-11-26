@@ -1411,6 +1411,21 @@ export const en: Strings = {
     /** The call button where no key is stored — the admin has one place to fix it, and it is named. */
     callNotConfigured:
       "Real-time voice is not configured yet: ask an admin to fill in the key under Settings › Server › Real-time voice.",
+    /**
+     * The ways a call fails, in this dictionary rather than in the transport or the relay: those
+     * deal in codes, and a sentence belongs to the reader's language.
+     */
+    callConnectFailed: "Could not reach the speech service. Check the network.",
+    callClosed: "The server closed the connection.",
+    callServiceError: "The speech service reported an error.",
+    callServiceFailed: "The speech service connection failed.",
+    callUnreachable: "Could not reach the speech service.",
+    /** `detail` is what the provider answered — an HTTP status, or its own words for the refusal. */
+    callRejected: (detail: string): string =>
+      detail === ""
+        ? "The speech service refused the connection."
+        : `The speech service refused the connection (${detail}).`,
+    callNoMic: "No microphone access — you can listen but not speak.",
   },
 
   common: {

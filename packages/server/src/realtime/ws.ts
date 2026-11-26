@@ -122,11 +122,24 @@ function relay(
     }
   };
 
-  /** The provider's refusal, handed to the page as a frame it already knows how to show. */
-  const fail = (message: string) => {
+  /**
+   * The provider's refusal, handed to the page as a frame it already knows how to show. `code` and
+   * `detail` are the machine-readable half — the page turns them into a sentence in the reader's
+   * language, which this server cannot know — and `message` stays as it was for a client that only
+   * knows this frame's original shape (the provider's answer, in English).
+   */
+  const fail = (code: "upstream_rejected" | "upstream_unreachable", detail: string) => {
+    // One refusal per call. A refused handshake ends this socket too, and a `ws` closed before its
+    // handshake reports an error of its own — that second, vaguer answer used to arrive last and
+    // overwrite the one that named the provider's status.
+    if (closed) return;
+    const message =
+      code === "upstream_rejected"
+        ? `The speech service rejected the connection${detail === "" ? "." : ` (${detail})`}`
+        : "Could not reach the speech service.";
     try {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: "proxy.error", message }));
+        client.send(JSON.stringify({ type: "proxy.error", code, detail, message }));
       }
     } catch {
       // already gone
@@ -157,14 +170,15 @@ function relay(
     response.on("end", () => {
       const detail = body.trim().slice(0, 200);
       fail(
-        `The speech service rejected the connection (HTTP ${response.statusCode ?? 0})${detail === "" ? "." : `: ${detail}`}`,
+        "upstream_rejected",
+        `HTTP ${response.statusCode ?? 0}${detail === "" ? "" : `: ${detail}`}`,
       );
     });
   });
 
   upstream.on("error", (err: Error) => {
     log(`[realtime] upstream failed: ${err.message}`);
-    fail("Could not reach the speech service.");
+    fail("upstream_unreachable", "");
   });
 
   upstream.on("close", (code: number, reason: Buffer) => {
