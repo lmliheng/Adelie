@@ -4021,6 +4021,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       `code`（`upstream_rejected` / `upstream_unreachable`）与 `detail`（供应商的答复），关闭原因不再上屏
       （已经说过原因的通话保留那句话）。见「第三百五十轮」一节。
 
+- [x] **7.220 悬停提示里没有断点的长串在面板边缘折断，不再跑出面板**（上游 `20b9715a3` `#1893` 移植，
+      **2026-11-26 第三百五十一轮**落地，提交见「已完成的轮次」；`packages/ui` 1 个源码文件（`contentClass`
+      三行）＋ 1 条新用例、`packages/ui-gallery` 1 个画板加示例 ＋ changelog 一对 —— **纯排版、无新依赖、
+      不碰接口**）：提示按用途分三种面板，`label`（控件名）这一类此前**完全没有 `overflow-wrap`** —— 一条没有
+      空格的串（文件路径、长标识符）没有可折的地方，整条文字跑出圆角面板、压在页面别处；`text` 用的
+      `wrap-break-word` 在计算内在宽度时不算断点，与「长到上限再折行」的写法对不齐。三种面板现在一律
+      `overflow-wrap: anywhere`。真浏览器两态：`label` 面板 `scrollWidth` 474 → **254**（= `clientWidth`），
+      面板高度 58 → 74（多折的那一行收在面板里）。见「第三百五十一轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7269,6 +7278,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.217 | **「清空」第一步没读出记录数时，原因留在那个按钮旁边，不再只活六秒**（**2026-11-26 第三百四十八轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 4 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/usage/errors-panel.tsx` 的 `openClear` 在读到计数（`offset=0&limit=1`，确认框要报的那个数）失败时不再 `toastError`，改写入新的 `countRefusal` 状态；新增导出的 `ClearCountRefusal` 画在页脚「清空」按钮与翻页器之间（`role="alert"`、`data-testid="errors-clear-count-refusal"`、危险色、`line-clamp-2`、悬停看全文、`flex-1 min-w-0` 占可用宽度），每次尝试开始与筛选条件变化时清空；`lib/strings{,-en}.ts` 各加 `usage.errorsClearCountRefused(reason)`（「清空没有开始」＋理由） | 见「第三百四十八轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；合并远端两笔后逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4075 通过 / 2 跳过**（+4 条即本笔，基线 4071） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 5 个文件 0 警告 0 错误、`prettier --check` 7 个文件干净、`git diff --check` 干净；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「没能读出要清空的记录数，清空没有开始：errors store is closed」、就在按钮右边同一行（按钮 x=325–367，句子 x=375）、确认框 0 个、通知区 0 条、7 秒后仍在、放开拦截再按确认框打开且句子收走）；**改前 dist 反证 1 failed**（`errors-clear-count-refusal` 元素不存在）；`errors-ignore.spec.mjs` 回归 **5 passed**（合并后在 `9c707fd3d` 上重跑：新 spec **1 passed** 与那 5 条 **5 passed**）；探针 console 只有既有的 `/machines` 403 与本轮故意造的 500 两条、pageerror 0 条） | `ad51fbfef` |
 | 2026-11-26 | 7.218 | **回复里的表格在窄屏下不再被挤成一字一行**（**2026-11-26 第三百四十九轮**落地；`packages/ui` 1 个样式文件 ＋ 1 条新用例 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`components/content/prose/prose.css` 的 `.md-body :where(th, td)` 加 `min-width: 6rem` —— `.md-body table` 的 `display:block; overflow-x:auto` 只做了一半：表格布局先把列压向最小内容宽度、压不动才溢出，而 CJK 文字的最小内容是一个字，390 px 上四列表的最后一列因此被压成 36 px 宽、十一行高，正文却没东西可滚。下限挂在单元格上而不是给表格定宽，本来就放得下的表格布局一字未变；`test/prose.test.ts` 一条新用例把「表格有滚动盒 ＋ 单元格有 rem 下限」这一对规则钉住 | 见「第三百四十九轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1118**（+1 即本笔）· cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **365 文件 / 4075 通过 / 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；**反证（单测）**：CSS 退回 `HEAD` → 新用例 **1 failed**（`min-width` 那条），放回 → `test/prose.test.ts` **23 passed**；**真浏览器两态**（真服务端 8981 ＋ mock 8982 ＋ `/usr/bin/chromium`，数据根 `/root/adelie-fork-data/r349-a`）：390 px 改前 32/289/36 px、**11 行**、`scrollWidth == clientWidth`（不滚）→ 改后 96/275/96 px、最多 **4 行**、468 > 358 **可横向滚动**；360 / 320 同形；1280 px 两态都 768 宽、不滚（列宽分配 42/582/143 → 96/526/145）；**散文型表格**（单元格是一句英文）改后 1280 仍 2 行贴合、390 靠换行贴合不滚；console **0 error**、pageerror **0**、0 条 4xx） | `566feea0d` |
 | 2026-11-26 | 7.219 | **桌宠通话失败时说的是这个窗口的语言；socket 的关闭原因不再覆盖那句话**（**2026-11-26 第三百五十轮**落地；`packages/web` 新 `features/pet/voice/call-failure.ts`、`realtime-client.ts` 的 `RealtimeConnectError`（`connect_failed` / `closed`）、`use-pet-call.ts` 改读词典、两本词典各加 7 条；`packages/server/src/realtime/ws.ts` 的 `proxy.error` 带 `code` / `detail`、一次通话只报一次拒绝＋ 新单测 14 条 ＋ 服务端用例 2 条 ＋ changelog 一对 —— **帧里新增两个字段、无新依赖**）：打不通的通话此前用错的语言说明原因（中继那句是服务端的英文，传输层兜底句是写死的中文），而 socket 的关闭原因 `upstream` 会被当成一句话写进那一行、把刚说过原因的句子覆盖掉 | 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1464 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3206 + 6 跳过**（+1 条即本笔）· web **367 / 4089 + 2 跳过**（+2 文件 / +14 条）· `oxlint` 9 个改动文件 **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **真服务端 8979 + 真浏览器（`/usr/bin/chromium`）四格两态**：改前（`HEAD` 的 4 个源码文件、重建 web 产物）四格全是 `upstream` → 改后「语音服务拒绝了这次连接（HTTP 401: no）」/「连不上语音服务。」/「The speech service refused the connection (HTTP 401: no).」/「Could not reach the speech service.」，四张截图看过、console error / pageerror 全 0 · 端口只用 8978 / 8979（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r349-a` | 见本行提交 |
+| 2026-11-26 | 7.220 | **悬停提示里没有断点的长串在面板边缘折断，不再跑出面板**（上游 `20b9715a3` `#1893` 移植，照改动落、不是合分支；4 个文件 / +37 −2，其中源码 2 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` 的 `contentClass`：`label` 由 `""` 改成 `wrap-anywhere`、`text` 由 `wrap-break-word` 改成 `wrap-anywhere`，并在类型注释里写下这条口径；`packages/ui-gallery/src/library/boards/tooltips.tsx` 的「被截断的一行」那一组加一条 `label` 型长路径示例）＋ 1 条新用例 ＋ changelog 一对，**纯排版、无新依赖、不碰接口**）：提示按用途分三种面板，`label`（控件名）这一类此前完全没有 `overflow-wrap` —— 一条没有空格的串（文件路径、长标识符）没有可折的地方，整条文字跑出圆角面板、压在页面别处；`text` 那一类用的是 `wrap-break-word`，它在计算内在宽度时不算断点，与「面板先长到上限、再折行」的写法对不齐。三种面板现在一律 `overflow-wrap: anywhere`：面板边缘就是断点，普通单词照旧整词换行。**本地化**：无（全在 `packages/ui` 与画廊内，无跨包 import、无 scope 引用点；画廊示例的路径按本仓数据根写成 `~/.adelie`，changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，本笔不动服务契约）· `oxlint` 0 警告 0 错误（438 文件）· `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 文件 / 1119 通过**（本笔新用例 1 条） · cli **39 / 568** · server **220 文件 / 3206 通过 / 6 跳过** · web **367 文件 / 4089 通过 / 2 跳过** · 画廊 `typecheck` + **20 文件 / 141 通过** · **反证（单测）**：把 `tooltip.tsx` 退回 `HEAD`、只跑 `test/tooltip.test.ts` → **1 failed / 26 passed**（新用例：`label` 的类名里没有 `wrap-anywhere`），换回本笔 → **27 全过** · **真服务端 + 真浏览器两态**（服务端 8985，数据根 `/root/adelie-fork-data/r351`，`ADELIE_WEB_DIST` 指 `packages/web/dist`，`/usr/bin/chromium`）：先关掉首次登录那张「尚未配置模型 credential」提示框，再往页面里注入一个只带 `data-tooltip`（`label` 型）／带 `data-tooltip-content` 的长路径触发器，悬停后读 `[data-testid="tooltip"]` —— **改前**：`label` 面板 `w=256 clientWidth=254 scrollWidth=474`（**溢出 220 px**、`overflow-wrap: normal`、高 58）、`code` 384/382/382、`text` 384/382/382（`overflow-wrap: break-word`）；**改后**：`label` `w=256 clientWidth=254 scrollWidth=254`（**不溢出**、`overflow-wrap: anywhere`、高 **74**，多折的那一行收在面板里）、`code` / `text` 与改前同宽同高（这两类本来就不溢出，回归对照）；两态 console error **0**。截图 `r351/out/{before,after}-label.png` 里看得很清楚：改前那句长路径越过面板右缘压到鲸鱼图标上，改后四折全在圆角框内 · 端口只用 8985，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r351` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35428,3 +35438,90 @@ changelog 一对，**不碰接口、不碰服务端、无新依赖**）：
   `packages/web/src/lib/strings{,-en}.ts`、`packages/web/test/{pet-call-failure,pet-call-transport}.test.ts`、
   `packages/server/src/realtime/ws.ts`、`packages/server/test/realtime.test.ts`、changelog 一对；
   台账（条目 7.219、上表那一行、本节）随本文件另起一笔。
+
+## 第三百五十一轮：悬停提示里没有断点的长串在面板边缘折断，不再跑出面板（2026-11-26，条目 7.220）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `fa2ca99d4`（第三百五十轮）。
+`git fetch origin` 经 https 两次不通（`GnuTLS recv error (-110)`，第二次加了 `http.version=HTTP/1.1` 同样，
+再试端口 443 直接连不上），改走 SSH（`git fetch git@github.com:lmliheng/Adelie.git main:refs/adelie-tmp/main`）
+一次就通，远端 `main` 与本地 HEAD **同一个提交**（`fa2ca99d4`），没有要快进的东西。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、
+3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板），第 7 节到 7.219 全勾。上游这一轮**往前走了**：
+上一轮记的头是 `84a35edab`，现在是 **`70fb5f318`**（0.2.20 发版），中间九笔，逐笔量过：
+`8b5eb0c69` 桌面壳的 `@types/node`（碰不得）与 `70fb5f318` 发版提交（本仓历来不取）先排掉；剩下七笔里
+`f5928243e`（工作台加载失败提供 Fix with AI / 报告问题，18 文件 / +1023 −46）、`c46f48ea0`（压缩缺失全文时
+在落定的那一行显示交接，14 / +957 −98）、`5b5772c59`（插件索引行的 npm 渠道与源失败原因，13 / +576 −55）、
+`c42a54fea`（等机器服务起完并说出拒绝原因，13 / +486 −25）都是一轮的量；`ef6c8ce99`（core 默认 system
+prompt 精修）会动内核哈希、要连 `KERNEL_VERSION` 一起推进，单独一轮；剩下两笔最小 —— `6097cab0c`（插件
+安装失败时报 npm 的错误行而不是它先打印的警告，4 / +70 −31）与 `20b9715a3`（悬停提示的长串换行，
+4 / +37 −2）。取后者：**纯界面、用户看得见、`git apply -3 --check` 两处源码逐字干净**，不碰桌面壳 / 包名 /
+流水线、不引入新依赖，自带一条能在本机真跑的证据链（画廊画板 + 真浏览器）。
+
+**为什么它是真的**：真浏览器里量出来的是「文字跑到面板外面」，不是理论上可能。
+
+1. 面板的宽度由 `maxWidth: min(16rem, room)` 封顶，`label` 型（控件名）那一类**完全没有 `overflow-wrap`**
+   —— 一条没有空格的串（文件路径、长标识符）没有可折的地方，整条文字就用它自己的宽度画出去。
+2. 改前实测：`label` 面板 `clientWidth` 254（面板 256），而 `scrollWidth` **474** —— 超出 220 px 的话压在
+   面板之外的页面上（截图里那句路径越过圆角右缘、压在鲸鱼图标上），面板本身反而只剩背景。
+3. `text` 那一类用的是 `wrap-break-word`：它能让一行在必要时折断，但**计算内在宽度时不算断点** —— 与
+   「面板先长到上限、再折行」这套写法（`w-max` + `maxWidth`）对不齐。本机两态量下来这类**都没有溢出**
+   （382 / 382），所以它只是口径统一，用户可见的变化在 `label` 那一类上；这一点如实写在这里，不把它
+   说成第二处溢出。
+
+**做了什么**（`packages/ui` 1 个源码文件 + 1 条新用例，`packages/ui-gallery` 1 个画板，changelog 一对；
+**纯排版、无新依赖、不碰接口**）：
+
+- `packages/ui/src/components/overlays/tooltip/tooltip.tsx`：`contentClass` 的 `label` 由 `""` 改成
+  `wrap-anywhere`、`text` 由 `wrap-break-word` 改成 `wrap-anywhere`（`code` 本来就是 `wrap-anywhere`），
+  并在类型注释里加一句「每一类都在面板边缘折断没有断点的长串，普通单词保持整词」。
+- `packages/ui-gallery/src/library/boards/tooltips.tsx`：「被截断的一行」那一组多一条长路径示例
+  （`data-tooltip` + `data-tooltip-extra`，`label` 型面板），与已有的 `code` 型命令并排 —— 画板上就能看见
+  这一条；路径按本仓数据根写 `~/.adelie`，注释说明为什么要这条。
+- `packages/ui/test/tooltip.test.ts`：从源码的 `contentClass` 表里读出三类，逐个要求带 `wrap-anywhere`，
+  并断言 `wrap-break-word` 不再出现；文件头那句「长文本在该宽度折行」补上「没有断点的串在面板边缘折断」。
+- 没有碰 `packages/desktop`、没有切版本号、没有发 npm / 安装包。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 文件 / 1119 通过** ·
+  cli **39 / 568** · server **220 文件 / 3206 通过 / 6 跳过** · web **367 文件 / 4089 通过 / 2 跳过**；
+  另跑 `@adelie/ui-gallery` 的 `typecheck` 与测试（本笔改了它的画板）：**20 文件 / 141 通过**。
+- `oxlint` **0 警告 0 错误**（438 文件）；`prettier --check` 干净；`git diff --check` 干净。
+- **反证（单测）**：把 `tooltip.tsx` 退回 `HEAD`、只跑 `test/tooltip.test.ts` → **1 failed / 26 passed**
+  （新用例读到 `label` 的类名里没有 `wrap-anywhere`）；换回本笔 → **27 全过**。
+- **真服务端 + 真浏览器两态**（服务端 8985，数据根 `/root/adelie-fork-data/r351`，
+  `ADELIE_WEB_DIST` 指到 `packages/web/dist`，`/usr/bin/chromium`）：先关掉首次登录那张「尚未配置模型
+  credential」提示框，再往页面里注入一个带 `data-tooltip`（`label` 型）／带 `data-tooltip-content`
+  （`code` / `text`）的长路径触发器，悬停后读 `[data-testid="tooltip"]`：
+  - **改前**（`tooltip.tsx` 退回 `HEAD`、重建 `packages/web/dist`）：`label` 面板 `w=256`、
+    `clientWidth=254`、**`scrollWidth=474`（溢出 220 px）**、`overflow-wrap: normal`、高 58；
+    `code` 384/382/382；`text` 384/382/382（`overflow-wrap: break-word`），后两类不溢出。
+  - **改后**（同一数据根、同一探针）：`label` `w=256`、`clientWidth=254`、**`scrollWidth=254`（不溢出）**、
+    `overflow-wrap: anywhere`、高 **74**（多折的那一行收在面板里）；`code` / `text` 与改前同宽同高，
+    `overflow-wrap: anywhere`。
+  - 两态 console error 各 **0**、无一条 ≥400；截图 `r351/out/{before,after}-label.png` 里看得清楚：改前那句
+    长路径越过面板右缘压到鲸鱼图标上，改后四折全在圆角框内。`code` / `text` 两态截图、原始测量
+    `r351/out/*-measure.json`、探针 `r351/probe.mjs` 都在 scratchpad。
+- 端口只用 8985（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r351`。
+
+### 没做 / 留着
+
+- **上游 `84a35edab..70fb5f318` 的其余八笔**：桌面壳与发版提交碰不得 / 不取；`6097cab0c`（插件安装失败的
+  错误行）与这一笔同为最小件，留给下一轮或下一次挑；`ef6c8ce99`（默认 system prompt）要连内核版本一起推，
+  单独一轮；其余三笔各是一轮的量 —— 见上面「选活」。
+- **`clear-data` 卡片的范围没写清**（上一轮记下的，本轮没碰）：按对话隔离之后，卡片的 Cookie / 缓存 / 站点
+  数据只清**当前对话**那一个分区，而「历史记录」是**全库共用**的，可卡片说明写的是「从内置浏览器中删除的
+  数据」—— 要不要把历史按对话切开是**语义上的一个决定**，留给用户一句话。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`81f221804`**：`packages/ui/src/components/overlays/tooltip/tooltip.tsx`、
+  `packages/ui/test/tooltip.test.ts`、`packages/ui-gallery/src/library/boards/tooltips.tsx`、
+  `changelog/unreleased/2026-11-26-tooltip-wrap-long-words{,.zh}.md`；台账（条目 7.220、上表那一行、本节）
+  随本文件另起一笔。
