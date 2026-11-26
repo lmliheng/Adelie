@@ -3973,6 +3973,16 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       （`dir_permission_denied`）照旧：选择器停在那儿，它自己的面板说明为什么什么都没显示。见
       「第三百四十三轮」一节。
 
+- [x] **7.214 手绘涂鸦（与赛博朋克）主题下，输入框「+」菜单里「运行中发送方式」的选中按钮不再被自己的
+      底色吃掉**（**2026-11-26 第三百四十五轮**落地，提交见「已完成的轮次」，用户点单；`packages/web`
+      1 个文件 1 处类名 —— **不碰接口、不碰服务端、无新依赖**）：用户报「手绘涂鸦这个 UI 库，运行中发送
+      方式按钮背景色覆盖了文本」。选中那枚小按钮原先写 `bg-gray-200 … dark:bg-gray-700` 当填充，而外置
+      主题的**调色板桥**把 `--color-gray-200` 映到 `--ui-line`（`packages/core/src/internal/external-theme.ts`
+      的 `PALETTE_BRIDGE_LIGHT/DARK`）—— 那座桥是对的（`border-gray-200` 正该跟着描边色走），错的是这里把
+      **描边档当填充**用，而手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），于是选中态的底色与
+      文字（`--ui-fg` `#332f2a`）同色、对比度 1.18。改成读令牌（`bg-fill-neutral` + `text-fg`，未选中
+      `text-fg-muted hover:text-fg`）。见「第三百四十五轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7215,6 +7225,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.212 | **大文件附件的上传有了进度：发送时右下角一张进度卡片**（**2026-11-26 第三百四十二轮**落地，用户点单；rebasing 时让号：远端已先占 7.211 / 第三百四十一轮；`packages/web` —— 新 `api/xhr-upload.ts`（`upload.onprogress` → 真 `Response`）、`api/client.ts` 的 `ApiFetchOptions.onUploadProgress`（给了才走 XHR）、`api/endpoints.ts` 的 `postTask` / `postSteer` 透传、新 `features/chat/message-upload-progress.ts`（`inputBytes` / `steerBytes` + 两个包装）、发送 / 排队 / 换模型 / 交接 / 草稿首条 / 插话六个调用点、`lib/strings{,-en}.ts` 两个槽位、新单测 13 条、新 spec 1 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **不碰接口、无新依赖**） | 见「第三百四十二轮」一节（web `vitest run` **364 文件 / 4065 通过 / 2 跳过**，本笔 +2 文件 +13 条；`pnpm -r typecheck` **`EXIT=0`**；`pnpm lint` 0 警告 0 错误；改动文件 `prettier --check` 干净；docs **8 文件 / 62 通过**；真服务端 + 真浏览器，CDP 把上行限到 700KB/s：改后 **1 passed**（卡片起来、`aria-valuenow` 两次读数递增、字节对那行在、发完卡片消失、消息进了对话），拿现网 0.8.4 的改前产物同一条 spec 反证 **1 failed**（`getByRole('progressbar', { name: '正在上传消息' })` 找不到）） | 见「第三百四十二轮」一节 |
 | 2026-11-26 | 7.213 | **工作区选择器的地址栏把进不去的路径留在输入框里，原因也留在它下面**（**2026-11-26 第三百四十三轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各删一句 ＋ 新 spec 2 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/chat/workspace-finder.tsx` 新增 `addressRefusal`（那句按错误码本地化的原因，画在地址输入框这一列里、与输入框左对齐）与 `addressAttempt`（只有仍是当前这次尝试的答复才把输入框放回来 —— 用户可能已自己拿回输入框或离开）；`commitAddress` 的失败分支 `dir_permission_denied` 照旧（选择器停在那儿、面板自己说明），其余情形用 `refusalText(err)` 并把输入框带着原来那条路径重新打开（整条选中）；`editAddress` / `cancelAddress` 清句并结束尝试；`lib/strings{,-en}.ts` 删掉不再使用的 `workspaceDirInvalid`（那句写着「已回退」，而今不再回退） | 见「第三百四十三轮」一节（rebase 到 `cd7473fe3` 后重跑：六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **364 文件 / 4066 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 改动文件 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；真服务端 + 真浏览器：**改后 2 passed**（输入框带着 `/tmp/…/typo-here` 回来、整条选中、焦点在框里；那句逐字「该目录不存在或不可访问。」、类名 `text-red-600 dark:text-red-400`；7 秒后仍在；同一字段改对回车即走到 `real` 并列到 `kept.txt`；通知区 0 条、console 除这次故意请求的 404 外 0 error），**改前 dist 反证 2 failed**（`finder-address-refusal` 元素不存在）；三份 finder spec 回归 **6 passed**） | `dbff1fbd6` |
 | 2026-11-26 | 发布 | **发 v0.8.5 并换装现网**（v0.8.4 之后攒下的四笔，**全在 Web 端**：**大文件附件的上传有了进度**（用户点单，发送时右下角一张进度卡）、**文件面板的 Edit 打不开编辑器时，原因留在预览上方**、**工作区选择器的地址栏把进不去的路径留在原地**、**stop hook 派生的游离会话不再画出一条空的智能体行**；服务端源码自 v0.8.4 以来没改，这一版**没有数据库迁移**。发布提交 `18c66addc`（父 `8f1261d3e`），`main` 与带注解的标签 `v0.8.5` 都是**直推**；门禁在 `/root/rel-085` 上 **rc=0 五步全绿**（build / typecheck 六个 `Done` / lint 0 警告 0 错误 2707 文件 / format:check / tests `ALL TESTS PASS`）；三件载荷 linux-x64 111M（114,498,922）/ universal 56M（57,257,420）/ win32-x64 144M（150,570,901）+ `validate-bundles.sh` 三件全过，桌面 deb 122,593,664 / AppImage 155,545,569 / exe 162,540,372；npm **29 个包**发到 0.8.5（`PUBLISH-ALL-DONE`，0 跳过）；GitHub Release **id `458889958`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T02:58:59Z）；3003 换上 v0.8.5 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v1030`）；现网 `/root/.adelie` 整棵换成 0.8.5、旧前端先拷回、瞬时单元 `adelie-live-restart-085` 延后 900 秒重启装新前端并自核验） | 发布轮，逐项见「第三百四十四轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.5、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 18c66addc…`、前端入口 `index-DlxipY7i.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；现网核验写 `rel-085-live-restart-verify.txt`；`releases/latest` = v0.8.5 | `18c66addc`（发布） |
+| 2026-11-26 | 7.214 | **手绘涂鸦（与赛博朋克）主题下，输入框「+」菜单里「运行中发送方式」的选中按钮不再被自己的底色吃掉**（**2026-11-26 第三百四十五轮**落地，用户点单；`packages/web` 1 个文件 1 处类名 —— **不碰接口、不碰服务端、无新依赖**）：选中那枚小按钮原先用 Tailwind 调色板档 `bg-gray-200 dark:bg-gray-700` 当填充，而外置主题的调色板桥（`external-theme.ts` 的 `PALETTE_BRIDGE_*`）把 `--color-gray-200` 映到 `--ui-line`；手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），文字 `--ui-fg` 是 `#332f2a`，于是底色与字同色。改成读令牌 `bg-fill-neutral` + `text-fg`（未选中 `text-fg-muted hover:text-fg`） | 见「第三百四十五轮」一节（真服务端 + 真浏览器，四套库主题 × 明暗两种模式量选中按钮的底色/文字 WCAG 对比度：改前 手绘涂鸦浅色 **1.18**、赛博朋克浅色 **1.40** / 深色 **1.47** 字被吃掉；改后八组全部 **≥ 9.9**；`packages/web` 单测 **364 文件 / 4066 通过 / 2 跳过**、`typecheck` rc=0、`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34895,3 +34906,56 @@ token 的表格；400 个 Z 的长粘贴）—— `[data-stream-scroll]` 一律 
 
 - 发布提交 **`18c66addc`**（版本号 37 个文件 + 发布正文）；标签 `v0.8.5` 指同一提交。
 - 台账一笔（本文件，条目 = 发布）。
+
+## 第三百四十五轮：「运行中发送方式」的选中按钮在手绘涂鸦主题下被自己的底色吃掉（2026-11-26，条目 7.214，用户点单）
+
+**开工自检**：`git status --short` 干净，本地 = 远端 = `704f7477e`（本会话上一轮的发布与台账）。用户点单
+「手绘涂鸦这个UI库 运行中发送方式 按钮背景色覆盖了文本」。
+
+**根因**（先复现再改）。那枚小按钮的类名是
+`bg-gray-200 font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-100` —— 用 Tailwind 的调色板档当填充。
+外置主题（`@adelie/ui` 之外导入的）拿到的是**调色板桥**：`packages/core/src/internal/external-theme.ts` 的
+`PALETTE_BRIDGE_LIGHT/DARK` 把 `--color-gray-200` → `var(--ui-line)`、`--color-gray-800` → `var(--ui-fg)`，
+整张表由主题自己的令牌值推出来。**那座桥本身是对的** —— `border-gray-200` 本来就该跟着主题的描边色走；
+错的是这里把**描边档当填充**用。手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），`--ui-fg` 是
+`#332f2a`，于是选中态的底色与文字同色。
+
+**做了什么**（`packages/web/src/features/chat/chat-input.tsx` 的 `SteerModeRow`，一处类名）：选中态改读令牌
+`bg-fill-neutral` + `text-fg` —— `--ui-fill-neutral` 在契约里的定义就是「消息气泡或 chip 坐着的那块中性填充
+面」；未选中态改 `text-fg-muted` / `hover:text-fg`（它在深色下的 `hover:text-gray-200` 一样会映到描边档，
+一并对齐）。**不碰接口、不碰服务端、无新依赖。**
+
+**验证**：真服务端 + 真浏览器（0.8.5 的构建 + 一次性数据根里装了四套库主题，端口 8931/8932，探针
+`r345-theme/`），四套主题 × 明暗两种模式，量那枚选中按钮的计算底色 / 文字色与 WCAG 对比度：
+
+| 主题 / 模式 | 改前 | 改后 |
+| --- | --- | --- |
+| 手绘涂鸦 · 浅色 | **1.18** | 11.96 |
+| 手绘涂鸦 · 深色 | 4.44 | 9.90 |
+| 赛博朋克 · 浅色 | **1.40** | 14.25 |
+| 赛博朋克 · 深色 | **1.47** | 15.55 |
+| 陶光 · 浅色 / 深色 | 13.44 / 11.19 | 13.95 / 11.65 |
+| 拟物化 · 浅色 / 深色 | 6.39 / 7.48 | 12.25 / 10.19 |
+
+改前最差 **1.18**（字被底色吃掉），改后八组**全部 ≥ 9.9**。截图（改前 / 改后各八张）在 scratchpad 的
+`r345-theme/{before,after}/`：手绘涂鸦浅色改前是一块深色方块、字几乎看不见，改后是浅底深字（那两枚
+按钮的可用性肉眼确认过）。
+
+`packages/web` 单测 **364 文件 / 4066 通过 / 2 跳过**；`pnpm --filter @adelie/web typecheck` rc=0；
+`oxlint` 0 警告 0 错误；`prettier --check` 干净；`git diff --check` 干净。带修复的前端（入口
+`index-BCMo4EVQ.js`，构建里 `bg-fill-neutral` 出现 3 处）已同步进 `/root/rel-085/out/penguin/web`，
+现网那次延后重启装的就是它 —— 所以这一笔会随 0.8.5 的换装一起到现网，不必再发一版。
+
+**没做 / 留着**：同一族的**其它**把调色板档当填充的地方这一轮没碰，但它们都坐在同一座桥上，会以同样的
+方式在深描边或高彩主题下坏掉 —— `features/company/channel-markdown.tsx`（与本次**逐字相同**的那枚选中
+chip）、`features/traces/trace-panel.tsx` 与 `sse-frame-list.tsx`（选中的标签页）、
+`features/chat/model-picker-modal.tsx`、`features/chat/workspace-finder.tsx`（选中行）、
+`features/chat/goal-banner.tsx`（徽标）、`features/company/org-switcher.tsx` 与 `channel-sidebar.tsx`
+（选中态与 hover）、`features/machines/machines-page.tsx`、`features/chat/context-gauge.tsx`（轨道）、
+`features/chat/conversation-outline.tsx`（刻度）。原则上都该从「描边档」改读「填充令牌」，但每处的填充
+语义不同（有的该是 `--ui-fill-neutral`、有的该是 `--ui-line-muted`、有的该是 tone 填充），要一个个看。
+
+### 提交
+
+- 代码一笔：`packages/web/src/features/chat/chat-input.tsx`（一处类名）；台账（条目 7.214、上表那一行、
+  本节）随本文件另起一笔。
