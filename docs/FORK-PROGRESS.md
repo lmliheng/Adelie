@@ -14,6 +14,7 @@
 > `CHANGELOG.md` / `CHANGELOG.zh.md` / `THIRD-PARTY-NOTICES.md` / `LICENSE`。下面 2026-10-08
 > 之前的记录里写的 `RELEASE-v<版本>.md`（仓库根）指的就是今天的 `docs/releases/` 里那份。
 
+
 ## 纪律（每轮开工前读一遍）
 
 - 在 `git worktree` 检出的 `/root/adelie-fork` 里干活（**分支 `main`**），**不要在 `/root/Adelie`
@@ -4007,6 +4008,19 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       现在单元格有一道 6rem 下限，列宽压到这里就停、溢出真的发生，表格自带的滚动盒才成为它本该是的东西；下限挂在
       单元格上而不是给表格定宽，本来就放得下的表格布局一字未变。见「第三百四十九轮」一节。
 
+- [x] **7.219 桌宠通话失败时说的是这个窗口的语言；socket 的关闭原因不再覆盖那句话**（**2026-11-26
+      第三百五十轮**落地，提交见「已完成的轮次」；`packages/web` 新 `features/pet/voice/call-failure.ts`
+      ＋ `realtime-client.ts` 改成带代码的 `RealtimeConnectError` ＋ `use-pet-call.ts` 改读词典 ＋
+      两本词典各加 7 条，`packages/server` 的 `realtime/ws.ts` 让 `proxy.error` 带上 `code` / `detail`
+      且一次通话只报一次拒绝；新单测 14 条 ＋ 服务端用例 2 条 ＋ changelog 一对 —— **帧里新增两个字段、
+      无新依赖**）：一次打不通的通话此前用错的语言说明原因 —— 中继自己那句话（语音服务以 401 拒绝）是
+      服务端写的英文，中文窗口照样显示英文；传输层的兜底句是写死的中文，英文窗口照样显示中文。而在这两者
+      之上，socket 的关闭原因（中继的 `upstream`、我们自己的 `bye`）会被当成一句话铺满那一行，把刚说过发生
+      了什么的那句**覆盖掉** —— 真浏览器实测四种语言 × 两种失败的组合，屏幕上全都是 `upstream`。现在：句子
+      进词典、按窗口的语言读，传输层只说代码（`connect_failed` / `closed`），中继的帧带
+      `code`（`upstream_rejected` / `upstream_unreachable`）与 `detail`（供应商的答复），关闭原因不再上屏
+      （已经说过原因的通话保留那句话）。见「第三百五十轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7254,6 +7268,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.216 | **`input_subagent` 留在后台的续跑轮会回报完成**（上游 `992c986e0` `#1864` 移植，照改动落、不是合分支；本树落下 8 个文件（3 改源码 + 1 改用例 + 2 份文档 + changelog 一对）：`packages/core/src/environment/tools/run-subagent.ts`（导出的 `leaveSubagentUnattended` 把「完成回报 + 常驻审批出口 + 实时消息转发」收在一处，后台启动与前台转后台共用）、`input-subagent.ts`（`startedRound` 标记这次调用真正发起的一轮，窗口结束时仍在跑就交给它并告知完成会以 `[background_task_done]` 送达）、`subagent/session.ts`（注释口径改为「无人看管的会话」）、用例 +151 行、`packages/docs/content/tools.{zh,en}.md` 各一句 —— **不碰接口、不碰界面、无新依赖**；接手 07:00 那一轮被 `user_abort` 中止的半成品，整片留底 `r349/r345-halfwork.patch`）：槽位被腾走后又恢复的子会话、一直只靠轮询访问的子会话，`input_subagent` 发起的续跑轮跑完时父 Session 一声不响 —— 只有以 `run_in_background` 启动、并且一直没让出过槽位的子会话例外。现在这样的一轮与后台启动拿到的东西相同。见「第三百四十七轮」一节 | 见「第三百四十七轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **364 文件 / 4066 通过 / 2 跳过** · docs **8 / 62**；`oxlint` **0 警告 0 错误**、改动 4 个 ts 文件 `prettier --check` 干净；**反证（单测）**：3 个源码文件退回 `HEAD` → `test/background-execution.test.ts` **2 failed / 34 passed**，拷回 → **36 passed**；上游 `992c986e0` 与本树 diff 逐行对过，8 文件名单一致、差异只在基座命名与行号；本笔不改界面，未起服务 / 未开浏览器，端口与数据根一个没碰） | `46615d48b` |
 | 2026-11-26 | 7.217 | **「清空」第一步没读出记录数时，原因留在那个按钮旁边，不再只活六秒**（**2026-11-26 第三百四十八轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 4 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/usage/errors-panel.tsx` 的 `openClear` 在读到计数（`offset=0&limit=1`，确认框要报的那个数）失败时不再 `toastError`，改写入新的 `countRefusal` 状态；新增导出的 `ClearCountRefusal` 画在页脚「清空」按钮与翻页器之间（`role="alert"`、`data-testid="errors-clear-count-refusal"`、危险色、`line-clamp-2`、悬停看全文、`flex-1 min-w-0` 占可用宽度），每次尝试开始与筛选条件变化时清空；`lib/strings{,-en}.ts` 各加 `usage.errorsClearCountRefused(reason)`（「清空没有开始」＋理由） | 见「第三百四十八轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；合并远端两笔后逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4075 通过 / 2 跳过**（+4 条即本笔，基线 4071） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 5 个文件 0 警告 0 错误、`prettier --check` 7 个文件干净、`git diff --check` 干净；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「没能读出要清空的记录数，清空没有开始：errors store is closed」、就在按钮右边同一行（按钮 x=325–367，句子 x=375）、确认框 0 个、通知区 0 条、7 秒后仍在、放开拦截再按确认框打开且句子收走）；**改前 dist 反证 1 failed**（`errors-clear-count-refusal` 元素不存在）；`errors-ignore.spec.mjs` 回归 **5 passed**（合并后在 `9c707fd3d` 上重跑：新 spec **1 passed** 与那 5 条 **5 passed**）；探针 console 只有既有的 `/machines` 403 与本轮故意造的 500 两条、pageerror 0 条） | `ad51fbfef` |
 | 2026-11-26 | 7.218 | **回复里的表格在窄屏下不再被挤成一字一行**（**2026-11-26 第三百四十九轮**落地；`packages/ui` 1 个样式文件 ＋ 1 条新用例 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`components/content/prose/prose.css` 的 `.md-body :where(th, td)` 加 `min-width: 6rem` —— `.md-body table` 的 `display:block; overflow-x:auto` 只做了一半：表格布局先把列压向最小内容宽度、压不动才溢出，而 CJK 文字的最小内容是一个字，390 px 上四列表的最后一列因此被压成 36 px 宽、十一行高，正文却没东西可滚。下限挂在单元格上而不是给表格定宽，本来就放得下的表格布局一字未变；`test/prose.test.ts` 一条新用例把「表格有滚动盒 ＋ 单元格有 rem 下限」这一对规则钉住 | 见「第三百四十九轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1118**（+1 即本笔）· cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **365 文件 / 4075 通过 / 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；**反证（单测）**：CSS 退回 `HEAD` → 新用例 **1 failed**（`min-width` 那条），放回 → `test/prose.test.ts` **23 passed**；**真浏览器两态**（真服务端 8981 ＋ mock 8982 ＋ `/usr/bin/chromium`，数据根 `/root/adelie-fork-data/r349-a`）：390 px 改前 32/289/36 px、**11 行**、`scrollWidth == clientWidth`（不滚）→ 改后 96/275/96 px、最多 **4 行**、468 > 358 **可横向滚动**；360 / 320 同形；1280 px 两态都 768 宽、不滚（列宽分配 42/582/143 → 96/526/145）；**散文型表格**（单元格是一句英文）改后 1280 仍 2 行贴合、390 靠换行贴合不滚；console **0 error**、pageerror **0**、0 条 4xx） | `566feea0d` |
+| 2026-11-26 | 7.219 | **桌宠通话失败时说的是这个窗口的语言；socket 的关闭原因不再覆盖那句话**（**2026-11-26 第三百五十轮**落地；`packages/web` 新 `features/pet/voice/call-failure.ts`、`realtime-client.ts` 的 `RealtimeConnectError`（`connect_failed` / `closed`）、`use-pet-call.ts` 改读词典、两本词典各加 7 条；`packages/server/src/realtime/ws.ts` 的 `proxy.error` 带 `code` / `detail`、一次通话只报一次拒绝＋ 新单测 14 条 ＋ 服务端用例 2 条 ＋ changelog 一对 —— **帧里新增两个字段、无新依赖**）：打不通的通话此前用错的语言说明原因（中继那句是服务端的英文，传输层兜底句是写死的中文），而 socket 的关闭原因 `upstream` 会被当成一句话写进那一行、把刚说过原因的句子覆盖掉 | 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1464 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3206 + 6 跳过**（+1 条即本笔）· web **367 / 4089 + 2 跳过**（+2 文件 / +14 条）· `oxlint` 9 个改动文件 **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **真服务端 8979 + 真浏览器（`/usr/bin/chromium`）四格两态**：改前（`HEAD` 的 4 个源码文件、重建 web 产物）四格全是 `upstream` → 改后「语音服务拒绝了这次连接（HTTP 401: no）」/「连不上语音服务。」/「The speech service refused the connection (HTTP 401: no).」/「Could not reach the speech service.」，四张截图看过、console error / pageerror 全 0 · 端口只用 8978 / 8979（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r349-a` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35301,3 +35316,115 @@ changelog 一对，**不碰接口、不碰服务端、无新依赖**）：
 
 - 代码一笔 **`566feea0d`**：`packages/ui/src/components/content/prose/prose.css`、
   `packages/ui/test/prose.test.ts`、changelog 一对；台账（条目 7.218、上表那一行、本节）随本文件另起一笔。
+
+## 第三百五十轮：桌宠通话失败时说的是这个窗口的语言（2026-11-26，条目 7.219）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `2fc2e2eb2`（第三百四十八轮），
+`git fetch origin` 一次即通，`HEAD..origin/main` 为 0。
+
+**让号**：收尾推送时远端已经先到（`566feea0d` + `4cb2e6f02`，另一条线的第三百四十九轮 / 条目 7.218：
+回复里的表格在窄屏下不再被挤成一字一行），它占了 7.218 / 第三百四十九轮，且改的正是
+`packages/web/src/lib/strings{,-en}.ts`（是另一个段）。按台账惯例把号让给它：本轮改记
+**7.219 / 第三百五十轮**，代码改动摘到新基线上重做了一笔提交，台账在本文件另起一笔。
+两处 `strings` 的改动互不相干（它改的是聊天气泡的正文样式表说明，本轮加的是 `pet` 段），
+`git rebase` 时只有本文件冲突，取远端那版为底、把自己的三块按新号落回去。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、
+3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板），第 7 节全勾。上游这一轮**动了**：`93b9d5056`
+之后新推五笔（`a3f42867d` 桌面壳的 macOS Git 签名、`e647e0882` 给 http 模块的流答复哨兵改 registry key、
+`8dbae9ec6` 把四个固定模块哨兵改成 `Symbol.for`、`dfb44e819` 0.2.19 发版、`84a35edab` CI）—— 逐笔量过：
+两笔是桌面壳与流水线（碰不得），两笔哨兵的落点在**本树没有的** `library/http/src/socket-stream-answer.ts`
+与 `packages/server/src/plugin/packlist.ts`，剩下能对上的 `run-stream.ts` 的 `KEEPALIVE` 与
+`cli/chat.ts` 的 `BUSY`：后者本树没有这个哨兵，前者在本树只在自己的模块内创建、自己读，两次加载
+也不共享，**改了没有可观察的差别**，所以这一撮不落（记在这里免得下一轮再追）。
+
+于是本轮做的是上一轮末尾点到的那一类：桌宠通话（7.203 的新界面）的失败句子。**它是真的**，
+而且比「句子用错语言」更硬：真浏览器里打不通的通话，屏幕上显示的是 `upstream`。
+
+**为什么它是真的**：一次打不通的通话有三条来源，各自说着各的语言，还有一条会把前一条盖掉。
+
+1. **中继自己的话是英文**：`proxy.error` 的 `message` 由 `packages/server/src/realtime/ws.ts` 写死
+   （`The speech service rejected the connection (HTTP 401)…`），中文窗口照样显示英文 —— 而它是
+   「密钥不对」「网关不通」这两类最常见的失败里唯一说明原因的那一条。
+2. **传输层的兜底句是中文**：`realtime-client.ts` 里 `ws.onerror` 与握手前的 `onclose` 各写死一句中文，
+   英文窗口照样显示中文；`use-pet-call.ts` 里还有三句（服务端错误帧的兜底、中继错误的兜底、
+   **拿不到麦克风**）。麦克风那条最容易撞上。
+3. **关闭原因把前一条盖掉**：中继发完 `proxy.error` 就用 `shutdown(1011, "upstream")` 关掉这条 socket，
+   页面的 `onClose(reason)` 把它原样交给 `setError` —— 于是舞台上写的是「upstream」，
+   刚说过原因的那句被覆盖。真浏览器实测（改前，两种语言 × 两种失败）**四格全是 `upstream`**。
+
+顺带量出一个服务端的小缺陷：握手被拒时上游 socket 也会结束，一个在握手前就关掉的 `ws` 会**另报一条**
+错误，于是同一通电话发出**两条** `proxy.error`，后一条（更含糊的「连不上」）最后到达。真浏览器里
+这一条与上面第 3 条叠在一起，屏幕上先闪一下英文原句、再变成 `upstream`。
+
+**做了什么**（`packages/web` 4 个源码文件（1 新）＋ 两本词典，`packages/server` 1 个源码文件；
+新单测 14 条、服务端用例 2 条、changelog 一对，**帧里新增两个字段、无新依赖、不碰界面结构**）：
+
+- `packages/web/src/lib/strings{,-en}.ts`：`pet` 段加七条 —— `callConnectFailed` / `callClosed` /
+  `callServiceError` / `callServiceFailed` / `callUnreachable` / `callRejected(detail)` / `callNoMic`。
+  `callRejected` 把供应商的答复放在括号里（「语音服务拒绝了这次连接（HTTP 401: no）」/ "The speech
+  service refused the connection (HTTP 401: no)."），答复是空的时候不带括号。
+- `packages/web/src/features/pet/voice/realtime-client.ts`：新增
+  `RealtimeConnectFailure = "connect_failed" | "closed"` 与 `RealtimeConnectError`（带 `reason`，
+  `message` 只写给日志：英文、不猜原因）。传输层不再造句。
+- `packages/web/src/features/pet/voice/call-failure.ts`（新）：`connectFailureText`（代码 → 句子）、
+  `proxyErrorText`（帧的 `code` / `detail` → 句子，不认识的 code 退回到帧里的 `message`，因此只认旧形状的
+  服务端照旧能看）、`providerErrorText`（供应商自己的错误帧）、`closedCallText(previous)`（关线时：
+  已经说过原因就保留那句，没说过的用自己的话 —— **关闭原因一个字节都不上屏**）。
+- `packages/web/src/features/pet/voice/use-pet-call.ts`：四处写死的句子改成读上面那几个函数与
+  `S.pet.callNoMic`；`onClose` 不再把 `reason` 交给 `setError`，改 `setError((previous) => closedCallText(previous))`。
+- `packages/server/src/realtime/ws.ts`：`fail(code, detail)` 现在发
+  `{ type: "proxy.error", code, detail, message }` —— `code` 是 `upstream_rejected` /
+  `upstream_unreachable`，`detail` 是供应商的答复（`HTTP 401: no`，或空），`message` 保持原来的英文句子
+  给只认旧形状的客户端；`upstream_rejected` 的那句话由 `detail` 拼出来，不再重复写一遍状态码。
+  另加一条 `if (closed) return;`：**一次通话只报一次拒绝**（理由见上）。
+- 没有碰 `packages/desktop`、没有切版本号、没有发 npm / 安装包。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** ·
+  cli **39 / 568** · server **220 文件 / 3206 通过 / 6 跳过**（基线 3205，+1 是新增的「连不上」用例）·
+  web **367 文件 / 4089 通过 / 2 跳过**（基线 4075，+2 文件 / +14 条）。
+- `oxlint` 9 个改动文件 **0 警告 0 错误**；`prettier --check` 干净（首跑三个文件要 `--write` 一次）；
+  `git diff --check` 干净。
+- **新单测 14 passed**：`test/pet-call-failure.test.ts` 10 条 —— 两个代码在中文与英文里各是各自的句子、
+  传输层的英文 `message` 不会漏到屏幕上、`proxy.error` 的两种 code 与「旧服务端只给了一句话」、
+  供应商错误帧保留自己的话、`closedCallText` 保留已说过的那句且从不让关闭原因上屏；
+  `test/pet-call-transport.test.ts` 4 条 —— 假 `WebSocket` 驱动三种开场：握手成功（`ws://app.test/api/realtime`）、
+  `onerror`（`connect_failed`）、握手前被对方关掉（`closed`，且 `message` 不含中文、不是那个关闭原因）。
+- **服务端用例 16 passed**：改前那条「把被拒的上游凭证交给页面」现在同时断言 `code === "upstream_rejected"`、
+  `detail` 含 `HTTP 401`，并且**等 300 ms 后 `proxy.error` 仍然只有一条**；新增「连不上」那条把设置指向一个
+  刚空闲的端口，断言 `code === "upstream_unreachable"`、`detail === ""`。
+- **真服务端 + 真浏览器两态**（服务端 8979，数据根 `/root/adelie-fork-data/r349-a`；两个替身供应商：
+  8978 在升级请求上直接回 `401 Refused`，8977 上什么都没有；`/usr/bin/chromium`，麦克风给了权限并喂假设备）：
+  - **改前**（把 4 个 web 源码文件退回 `HEAD`、删掉 `call-failure.ts`、重建 `packages/web/dist`）：同一份探针
+    **四格全红**，每一格的 `role=alert` 读出来都是 `"upstream"`。
+  - **改后**：`语音服务拒绝了这次连接（HTTP 401: no）` · `连不上语音服务。` ·
+    `The speech service refused the connection (HTTP 401: no).` · `Could not reach the speech service.`
+    —— **4 passed**，`html lang` 在英文那两格里是 `en`，四格的 console error / pageerror 全 **0**。
+  - 四张截图（`r349/out/{1-zh-refused,2-zh-unreachable,3-en-refused,4-en-unreachable}.png`）看过：红字在
+    说话区下方那一行、舞台其余文案与语言一致（`通话已结束` / `Call ended`）。
+- 端口只用 8978 / 8979（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；探针（`zz-probe-r349.spec.mjs`）
+  跑完即从 `packages/web/e2e/` 删掉，替身供应商、配置、截图都在 scratchpad 的 `r349/` 下。
+
+### 没做 / 留着
+
+- **上游 `93b9d5056..84a35edab` 的五笔**：两笔桌面壳 / 流水线（碰不得）、两笔哨兵改 registry key 的落点
+  本树没有、剩下能对上的 `KEEPALIVE` 在本树改了也没有可观察差别 —— 见上面「选活」。
+- **`clear-data` 卡片的范围没写清**（本轮没碰，记下来备查）：按对话隔离之后，卡片的 Cookie / 缓存 / 站点
+  数据只清**当前对话**那一个分区，而「历史记录」是**全库共用**的（`clearHistory()` 没有 scope，
+  `searchHistory` 也没有），可卡片的说明写的是「从内置浏览器中删除的数据」，两件事读起来是一件。
+  地址栏的补全同样给出别的对话访问过的页面 —— 这是 7.201 漏下的一角，要不要把历史按对话切开（还是保持
+  共用、只把卡片说明写清）是**语义上的一个决定**，留给一轮单独的、或等用户一句话。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`715a6d13f`**：`packages/web/src/features/pet/voice/{call-failure.ts,realtime-client.ts,use-pet-call.ts}`、
+  `packages/web/src/lib/strings{,-en}.ts`、`packages/web/test/{pet-call-failure,pet-call-transport}.test.ts`、
+  `packages/server/src/realtime/ws.ts`、`packages/server/test/realtime.test.ts`、changelog 一对；
+  台账（条目 7.219、上表那一行、本节）随本文件另起一笔。
