@@ -7295,6 +7295,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.221 | **一个 177MB 的附件不再把浏览器拖死：大文件改走独立直传，小文件照旧**（**2026-11-26 第三百五十二轮**落地，用户点单；`packages/server` —— 新路由 `POST /api/sessions/:sessionId/attachments`（原始字节直传、边收边计上限）、`services/task-attachments.ts` 的 `receiveAttachment` / `openSessionScratchpad` / `resolveUploadedFile` 与 `{type:"file"}` 的 `path` 形态、`api/types.ts` 三个类型、`runtime/messaging/bridge.ts` 与 `test/session-manager.test.ts` 跟随、新用例 9 条；`packages/web` —— 新 `lib/upload-limits.ts`（`DIRECT_UPLOAD_MIN_BYTES` 2MB / `splitByTransport`）、`features/chat/message-upload-progress.ts`（`ComposerFile` / `resolveComposerFiles` / `filePartsOf` / `steerFileAttachmentsOf`）、`api/client.ts` 的 `rawBody`、`api/xhr-upload.ts`、`api/endpoints.ts` 的 `uploadSessionAttachment`、发送/排队/换模型/交接/草稿/插话六处各多一个 `files` 参数、`lib/video-input.ts`、`lib/strings{,-en}.ts`、新单测 8 条、e2e spec 重写 2 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **接口契约未变**（`src/ifaces.json` unchanged），CSRF 未放宽；**两次 rebase 到 `7a2dc1b41`（编号让给先到的 7.215–7.220）**） | 见「第三百五十二轮」一节（六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`）；逐包 test **`EXIT=0`、0 失败**：server **220 文件 / 3215 通过 / 6 跳过**（本笔 +9）· web **367 文件 / 4097 通过 / 2 跳过**（本笔 +8）· docs **8 / 62**；`oxlint` 0 警告 0 错误 · 改动文件 `prettier --check` 干净 · `git diff --check` 干净；**整套 web e2e 全量（rebase 后重建 core/server/web 再跑）**：**429 passed，38.5 分钟，`E2E_RC=0`，零失败**；新 / 重写的 e2e 两条单跑 **2 passed**：3MB 走直传（CDP 上行限 700KB/s、卡片名 `正在上传 session-2026-11-23-big.jsonl`、`aria-valuemax == 3MB`、`POST …/attachments?name=…`、消息 `附加文件：<名>`、scratchpad `GET` 回长度 3MB）、1MB 走内联（无 `/attachments?` 请求）；相关回归单跑通过 attachment-refusal 2 / upload-refusal 2 / draft 1 / queued-recall-refusal 3 / video-input 1 / steer-reload 1 / handoff-send-refusal 2） | 见本行提交 |
 | 2026-11-27 | 7.222 | **默认提示词精修：交付物亲自核对、卡住的检查先分清原因、精修前先落一份可用候选**（上游 `ef6c8ce99` `#1880` 移植，照改动落、不是合分支；4 个文件 / +36 −6，其中源码 2 个（`packages/core/src/state/default-config.ts` 的 `DEFAULT_SYSTEM_PROMPT`：`# Success criteria` 两行重写、`# Stop rules` 与 `# Tool use` 各加一行、非交互命令那一行补上无人值守 Debian 安装 / 活过会话的服务 / 后台完成通知 / 退出状态；`packages/core/src/state/kernel-history.ts`：`KERNEL_VERSION` `2026-11-18` → `2026-11-27`、旧提示词哈希移进 superseded、新哈希写进 current、世代清单加一行）＋ changelog 一对，**不碰接口、不动已存数据、无新依赖**）：`# Success criteria` 原来只说「检查每个问题都解决了」，没说拿什么去比，字面量 / 路径 / 筛选条件 / 要求的输出差一点也会被报成「已验证」；现在写明核对用户的明确要求（指定确切内容时整份比对，转换或筛选各查一个该被改动 / 该被包含与一个该被保留 / 该被排除的用例），项目有文档的检查照跑、覆盖不到的要求或具体风险补一个针对性的检查，并且只报观察到的结果。**本地化**：全文照落，提示词本来就是英文；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1119** · cli **39 / 568** · server **220 文件 / 3215 通过 / 6 跳过** · web **367 文件 / 4097 通过 / 2 跳过**（四个包与本笔之前逐项相同 —— 本笔只动默认提示词与内核记录，没有新增用例）· **反证（单测）**：只改提示词、`kernel-history.ts` 保持 `HEAD`，跑 `test/kernel-version.test.ts` → **1 failed / 18 passed**（门禁精确点名 `prompt` 一个 tab 移动），把内核前进写回 → **19 全过** · **真值检查**：`tsx` 直接读 `defaultSystemConfig()` —— `kernel_version` 是 `2026-11-27`，五条新句（两条 Success criteria、Stop rules、Tool use、DEBIAN_FRONTEND 那句）都在 `system_prompt` 里，旧句 `Before delivering the result` 已不存在；`computeKernelTabHashes` 的 prompt 是 `72be07b0…24c5c`，其余六个 tab 与上一代逐字相同 · 没改界面，故不起浏览器；没碰桌面壳 / `legacy/main` / `/root/Adelie` / `/root/penguin-harness` / `/root/AgentCode`；不切版本号、不发 npm、不发安装包 | 见本行提交 |
 | 2026-11-27 | 7.223 | **对话页多了一个「网络」面板，每一回合发了哪些请求都看得见；顺带把工作区选择器选中行的配色修好**（**2026-11-27 第三百五十四轮**落地，用户点单 + 用户带截图报配色；`packages/web` 22 个文件 / +2462 −20：新 `api/net-log.ts`（环形 300 条、响应体每条 64 KB、默认遮罩）、`api/client.ts` / `api/sse.ts` 插桩、新 `features/network/` 五个文件、`features/settings/network-section.tsx`、`builtin-dock-panels.tsx`、`message-item.tsx` / `message-stream.tsx` 的内联行、两本词典各 +128/130 行、新单测 `test/network-panel.test.ts`（21 条）+ `settings-sections.test.ts`（+4）、新 spec `e2e/network-panel.spec.mjs`（3 条）；配色那处在 `features/chat/workspace-finder.tsx` 两处类名 —— **不碰服务端、不碰接口、无新依赖、不动已存数据**）：面板是停靠区的常驻标签（与子代理/文件/记忆/轨迹/日程并列），记录只在本页内存、刷新即清空；按回合分组、范围/类型/搜索、详情在面板内切换（概述含时间分解 / 请求 / 响应 / 事件流 / 关联），助手回复页脚加 `⚡ N 个请求 · M 次模型调用 · 耗时` 可点回该回合，设置›系统加「网络记录」一节；服务端写帧那半仍是「未采集」占位（P1）。配色：选中行原来拿 `bg-gray-200` 当填充，外置主题的调色板桥把它映到描边色，手绘涂鸦的描边 `#3f3a34` 与字 `#211f1b` 对比度约 **1.06**，整行成了深底深字；改用应用导航在用的 `bg-fg/7` + `text-fg` | 见「第三百五十四轮」一节（rebase 到 `9bee7c5f3` 之后重跑：`packages/web` `typecheck` **rc=0**；全仓 `oxlint` **0 警告 0 错误**（2719 文件）；22 个改动文件 `prettier --check` 干净；`pnpm --filter @adelie/web build` **rc=0**（入口 `index-BBuCzrjC.js`）；web 单测 **368 文件 / 4118 通过 / 2 跳过**；真服务端 + 真浏览器：网络面板 spec **3 passed**（内联行 → 面板按回合分组 → 暂停/继续；dock 选择器里的范围/类型/搜索；点一行 → 五个标签 → 事件流里「服务端写出·未采集」→ ← 返回），finder 三份 spec 回归 **6 passed**；配色用临时实例 + 涂鸦主题截图，四种组合（涂鸦/默认 × 浅/深）逐张看过，选中行的底色实测从 `#3f3a34`（描边色）变成 `#f1e5d3`（`--ui-fg` 7% 叠在 `#fff4e0` 上），字 `#1d1a16`；**整套 204 个 e2e 没重跑**，只跑了上述这几条） | `ef7064f85`…`540bf9519`（六笔面板 + 两笔用例如实按小步提交） |
+| 2026-11-27 | 发布 | **发 v0.8.6 并换装现网**（v0.8.5 之后攒下的十笔：**大附件改走独立直传**（用户点单，2MB 以上每文件一张进度卡，消息正文里只带落盘路径）、**对话页的「网络」面板**（用户点单，常驻标签、按回合分组、默认遮罩、只在本页内存）、**内置提示词推进到内核 2026-11-27**（交付物按用户的明确要求核对、卡住的检查先分清原因）、**工作区选择器选中行在涂鸦主题下的配色**（用户带截图报，对比度 1.06 → 12 上下），以及悬停提示长串折断、窄屏表格、桌宠通话失败文案、`input_subagent` 后台回报、清空数据第一步与停靠面板终端失败原因、涂鸦主题「运行中发送方式」按钮 六处小修；服务端新增一条上传路由，**没有数据库迁移**。发布提交 `bb0409bc3`（父 `95029dd6a`）+ 门禁修复 `658436797`，带注解的标签 `v0.8.6` 指 `658436797`；`main` 与标签都直推；门禁在 `/root/rel-086` 上**第二遍 rc=0 五步全绿**（第一遍 rc=1：`@adelie/ui` 的 `.ui-live` 缺 `data-live` 且不归 Dot/ProgressBar 写、`@adelie/ui-gallery` 缺直传接口的模拟，都修好后重跑）；三件载荷 114,520,461 / 57,297,876 / 150,593,459 + `validate-bundles.sh` 三件全过，桌面 deb 122,607,624 / AppImage 155,561,807 / exe 162,497,937；npm **29 个包**发到 0.8.6（`PUBLISH-ALL-DONE`，读侧 `@adelie/server` 当场仍是 0.8.5，属已知滞后）；GitHub Release **id `459986837`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T23:14:29Z）；3003 换上 v0.8.6 清单（旧清单与旧 exe 留 `.bak-20261127-v0715`）；现网 `/root/.adelie` 整棵换成 0.8.6、旧前端先拷回（`index-BCMo4EVQ.js`），新前端 `index-Bm3s3_u9.js` 由瞬时单元延后重启装进去） | 发布轮，逐项见「第三百五十五轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.6、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 658436797…`、前端入口 `index-Bm3s3_u9.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；`releases/latest` = v0.8.6 | `658436797`（发布） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35774,3 +35775,62 @@ Web 端按大小分流，阈值 `DIRECT_UPLOAD_MIN_BYTES = 2MB`（`lib/upload-li
 - `ef7064f85` 记录器 · `c0b74b9a9` 面板与内联行 · `f5ad872a2` 脱敏与单测 · `fa5c8c6e2` 配色与排版
   · `b3fbdcb9c` 首条浏览器用例 · `41d0cf37c` 详情页用例 · `540bf9519` 选择器配色。
 - 台账与 changelog 三对（直传 / 网络面板 / 选择器配色）随本文件另起一笔。
+
+## 第三百五十五轮：正式发 v0.8.6、换装现网（2026-11-27）
+
+**开工自检**：`git status --short` 干净；本地 `main` 与 `origin/main` 都是 `9bee7c5f3`（另一条线的默认提示词
+那一笔）。用户点单：「你看看待做任务都做了吗 做了就提交 更新小版本 更新现网」。待做清单里那七条是直传那一轮
+留下的，逐条核过都已完成（直传早就推上去了），于是换成这一版发版的清单。
+
+**这一版收的是什么**：v0.8.5（`18c66addc`）之后攒下的十笔 —— 大附件改走独立直传（用户点单）、对话页的
+「网络」面板（用户点单）、内置提示词推进到内核 2026-11-27、工作区选择器选中行在涂鸦主题下看不清（用户带
+截图报）、悬停提示长串折断、窄屏表格、桌宠通话失败文案、`input_subagent` 后台回报、清空数据第一步与停靠
+面板终端的失败原因、涂鸦主题「运行中发送方式」按钮。**服务端新增一条上传路由**（`POST
+/api/sessions/:id/attachments`），**没有数据库迁移**。
+
+**发布链**（脚本按 v0.8.5 那套复制，在 `release-086/` 下）：
+
+- 版本戳 **37 个文件**（root + 10 个包 + 25 个对外插件 + core 的 `VERSION`；四个 private `sandbox-*` 停在
+  0.2.3）。
+- 发布提交 **`bb0409bc3`**（父 `95029dd6a`，本会话那十笔 + 台账 + 三对 changelog 先推上去）；`main` 与
+  带注解的标签 `v0.8.6` 都**直推**。
+- **门禁第一遍 `rc=1`**，抓到两处真问题：`@adelie/ui` 的 `hooks.test.ts` 说网络面板自己写了 `.ui-live`
+  却没有 `data-live`、而这个钩子只归 Dot/ProgressBar 这类组件写（两条用例红）；`@adelie/ui-gallery` 的
+  `mock-api.test.ts` 说新加的 `uploadSessionAttachment` 没有模拟路由。修法：待发那行改用 `<Dot pulse>`、
+  耗时条改用 `<ProgressBar>`，画廊补上 `POST /api/sessions/:sessionId/attachments` 的模拟；修复提交
+  **`658436797`** 推上 main，发布树 `checkout -B release-086 origin/main` 后**标签挪到 `658436797`** 并
+  强推（标签此前只是推了、没有发布任何东西）。**第二遍门禁 `rc=0` 五步全绿**：build / typecheck 六个
+  `Done` / lint 0 警告 0 错误 2722 文件 / format:check / tests `ALL TESTS PASS`。
+- **先 stamp 再 build**：`VERSION=0.8.6 BUILD_DATE=2026-11-26（UTC）BUILD_COMMIT=658436797…`，
+  `install.sh` / `install.ps1` 的 `__PENGUIN_RELEASE_VERSION__` → `v0.8.6`。
+- 三件载荷：linux-x64 **114,520,461**、universal **57,297,876**、win32-x64 **150,593,459**；三件安装包 +
+  `validate-bundles.sh` 三件全过；`install.sh` / `install.ps1` 另补一份进 `dist-artifacts/`。
+- 桌面三件：deb **122,607,624**、AppImage **155,561,807**、exe **162,497,937**（+ blockmap + `latest*.yml`），
+  都标 0.8.6；Windows 那个走 wine + xvfb。
+- **npm**：29 个包（`amsp`/`core`/`server`/`cli` + 25 个插件）发到 0.8.6，`PUBLISH-ALL-DONE`、29 行
+  `Published package`、0 个跳过（`NPM_TOKEN_ADELIE`）。当场复读注册表：`cli` 与 `core` 已 0.8.6，
+  `server` 仍是 0.8.5 —— 那套「发布了但读侧要等」的滞后，**不升版本号**。
+- **GitHub Release**：草稿 id **`459986837`**、4 路并发传 14 件 763 MB、逐件核过 size 与 sha256 digest 后
+  PATCH `draft=false` 发布为 latest（`published_at` `2026-11-26T23:14:29Z`）。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.6`（保留 `android-test` 分组，旧清单
+  留 `.bak-20261127-v0715`），本机那份 Windows 桌面包一并换新。
+- **换装前冒烟**：从**载荷** `linux-x64.tar.gz` 解一棵树起临时实例（端口 8911、临时数据根）—— `lib` 0.8.6、
+  core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 658436797…`、前端入口 `index-Bm3s3_u9.js`、`GET /` 200、
+  入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 整棵换成 0.8.6（`lib/package.json` 与
+  `bin/penguin --version` 都是 0.8.6，数据根没动）；装完**立刻把旧前端拷回**（内存里还是旧服务端，旧入口
+  `index-BCMo4EVQ.js`），新的 `index-Bm3s3_u9.js` 留在 `/root/rel-086/out/penguin/web/`，由瞬时单元
+  `adelie-live-restart-086` 延后重启、重启成功后再装新前端并自核验（写
+  `/root/Adelie_develop/rel-086-live-restart-verify.txt`）。`ADELIE_TRUST_PROXY=1` 上一版已在单元里。
+
+**没做 / 留着**：
+
+- 换装后到重启成功前，`/root/rel-086` 不能删（重启脚本要用它的 `out/penguin/web`）；核验过了再清。
+- npm 读写滞后：`@adelie/server` 等包起来之后再复探，不为此升版本号。
+- 桌面端 macOS 仍不出（未签名，与上一版相同）。
+
+### 提交
+
+- 代码十笔 + 台账一笔（`95029dd6a`）先推；发布提交 `bb0409bc3`（版本号 37 个文件 + 发布正文）；门禁修复
+  `658436797`；标签 `v0.8.6` 指 `658436797`。
+- 台账一笔（本文件，条目 = 发布）。
