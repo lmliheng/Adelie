@@ -6,7 +6,8 @@
  * The panel is pinned by one horizontal edge and grows away from it, so the only width it can
  * safely take is the room between that edge and the viewport margin on the far side. A long
  * text — a background process's command, shown whole — wraps at that room instead of running off
- * a phone's screen; a short label never reaches it.
+ * a phone's screen; a short label never reaches it. A run with no break opportunity at all (a
+ * path) is broken at the panel's edge in every kind, since the panel's edge is the only edge left.
  *
  * Vertically, a panel hangs under a toolbar control, with three cases once its height is known:
  * - Given a control at the foot of the window (the composer's context ring) and a panel taller
@@ -352,5 +353,21 @@ describe("Tooltip", () => {
       ]),
     );
     expect(source).toContain("aria-hidden");
+  });
+
+  it("keeps a run with no break opportunity inside the panel, for every kind", () => {
+    const source = readFileSync(join(SRC_DIR, "components/overlays/tooltip/tooltip.tsx"), "utf8");
+    const table = /const contentClass[^{]*\{([^}]*)\}/.exec(source);
+    expect(table, "the per-kind class table").not.toBeNull();
+    const rows = [...table![1]!.matchAll(/(label|code|text): "([^"]*)"/g)];
+    expect(rows.map((row) => row[1])).toEqual(["label", "code", "text"]);
+    for (const [, kind, classes] of rows) {
+      // A path in a hint has no space to wrap at: without this the panel's own edge is not a
+      // break either, and the text runs past the rounded box.
+      expect(classes!.split(" "), `${kind} breaks a long run at the panel edge`).toContain(
+        "wrap-anywhere",
+      );
+    }
+    expect(source).not.toContain("wrap-break-word");
   });
 });
