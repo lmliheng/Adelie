@@ -7279,6 +7279,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.218 | **回复里的表格在窄屏下不再被挤成一字一行**（**2026-11-26 第三百四十九轮**落地；`packages/ui` 1 个样式文件 ＋ 1 条新用例 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`components/content/prose/prose.css` 的 `.md-body :where(th, td)` 加 `min-width: 6rem` —— `.md-body table` 的 `display:block; overflow-x:auto` 只做了一半：表格布局先把列压向最小内容宽度、压不动才溢出，而 CJK 文字的最小内容是一个字，390 px 上四列表的最后一列因此被压成 36 px 宽、十一行高，正文却没东西可滚。下限挂在单元格上而不是给表格定宽，本来就放得下的表格布局一字未变；`test/prose.test.ts` 一条新用例把「表格有滚动盒 ＋ 单元格有 rem 下限」这一对规则钉住 | 见「第三百四十九轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1118**（+1 即本笔）· cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **365 文件 / 4075 通过 / 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；**反证（单测）**：CSS 退回 `HEAD` → 新用例 **1 failed**（`min-width` 那条），放回 → `test/prose.test.ts` **23 passed**；**真浏览器两态**（真服务端 8981 ＋ mock 8982 ＋ `/usr/bin/chromium`，数据根 `/root/adelie-fork-data/r349-a`）：390 px 改前 32/289/36 px、**11 行**、`scrollWidth == clientWidth`（不滚）→ 改后 96/275/96 px、最多 **4 行**、468 > 358 **可横向滚动**；360 / 320 同形；1280 px 两态都 768 宽、不滚（列宽分配 42/582/143 → 96/526/145）；**散文型表格**（单元格是一句英文）改后 1280 仍 2 行贴合、390 靠换行贴合不滚；console **0 error**、pageerror **0**、0 条 4xx） | `566feea0d` |
 | 2026-11-26 | 7.219 | **桌宠通话失败时说的是这个窗口的语言；socket 的关闭原因不再覆盖那句话**（**2026-11-26 第三百五十轮**落地；`packages/web` 新 `features/pet/voice/call-failure.ts`、`realtime-client.ts` 的 `RealtimeConnectError`（`connect_failed` / `closed`）、`use-pet-call.ts` 改读词典、两本词典各加 7 条；`packages/server/src/realtime/ws.ts` 的 `proxy.error` 带 `code` / `detail`、一次通话只报一次拒绝＋ 新单测 14 条 ＋ 服务端用例 2 条 ＋ changelog 一对 —— **帧里新增两个字段、无新依赖**）：打不通的通话此前用错的语言说明原因（中继那句是服务端的英文，传输层兜底句是写死的中文），而 socket 的关闭原因 `upstream` 会被当成一句话写进那一行、把刚说过原因的句子覆盖掉 | 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1464 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3206 + 6 跳过**（+1 条即本笔）· web **367 / 4089 + 2 跳过**（+2 文件 / +14 条）· `oxlint` 9 个改动文件 **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **真服务端 8979 + 真浏览器（`/usr/bin/chromium`）四格两态**：改前（`HEAD` 的 4 个源码文件、重建 web 产物）四格全是 `upstream` → 改后「语音服务拒绝了这次连接（HTTP 401: no）」/「连不上语音服务。」/「The speech service refused the connection (HTTP 401: no).」/「Could not reach the speech service.」，四张截图看过、console error / pageerror 全 0 · 端口只用 8978 / 8979（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r349-a` | 见本行提交 |
 | 2026-11-26 | 7.220 | **悬停提示里没有断点的长串在面板边缘折断，不再跑出面板**（上游 `20b9715a3` `#1893` 移植，照改动落、不是合分支；4 个文件 / +37 −2，其中源码 2 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` 的 `contentClass`：`label` 由 `""` 改成 `wrap-anywhere`、`text` 由 `wrap-break-word` 改成 `wrap-anywhere`，并在类型注释里写下这条口径；`packages/ui-gallery/src/library/boards/tooltips.tsx` 的「被截断的一行」那一组加一条 `label` 型长路径示例）＋ 1 条新用例 ＋ changelog 一对，**纯排版、无新依赖、不碰接口**）：提示按用途分三种面板，`label`（控件名）这一类此前完全没有 `overflow-wrap` —— 一条没有空格的串（文件路径、长标识符）没有可折的地方，整条文字跑出圆角面板、压在页面别处；`text` 那一类用的是 `wrap-break-word`，它在计算内在宽度时不算断点，与「面板先长到上限、再折行」的写法对不齐。三种面板现在一律 `overflow-wrap: anywhere`：面板边缘就是断点，普通单词照旧整词换行。**本地化**：无（全在 `packages/ui` 与画廊内，无跨包 import、无 scope 引用点；画廊示例的路径按本仓数据根写成 `~/.adelie`，changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，本笔不动服务契约）· `oxlint` 0 警告 0 错误（438 文件）· `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 文件 / 1119 通过**（本笔新用例 1 条） · cli **39 / 568** · server **220 文件 / 3206 通过 / 6 跳过** · web **367 文件 / 4089 通过 / 2 跳过** · 画廊 `typecheck` + **20 文件 / 141 通过** · **反证（单测）**：把 `tooltip.tsx` 退回 `HEAD`、只跑 `test/tooltip.test.ts` → **1 failed / 26 passed**（新用例：`label` 的类名里没有 `wrap-anywhere`），换回本笔 → **27 全过** · **真服务端 + 真浏览器两态**（服务端 8985，数据根 `/root/adelie-fork-data/r351`，`ADELIE_WEB_DIST` 指 `packages/web/dist`，`/usr/bin/chromium`）：先关掉首次登录那张「尚未配置模型 credential」提示框，再往页面里注入一个只带 `data-tooltip`（`label` 型）／带 `data-tooltip-content` 的长路径触发器，悬停后读 `[data-testid="tooltip"]` —— **改前**：`label` 面板 `w=256 clientWidth=254 scrollWidth=474`（**溢出 220 px**、`overflow-wrap: normal`、高 58）、`code` 384/382/382、`text` 384/382/382（`overflow-wrap: break-word`）；**改后**：`label` `w=256 clientWidth=254 scrollWidth=254`（**不溢出**、`overflow-wrap: anywhere`、高 **74**，多折的那一行收在面板里）、`code` / `text` 与改前同宽同高（这两类本来就不溢出，回归对照）；两态 console error **0**。截图 `r351/out/{before,after}-label.png` 里看得很清楚：改前那句长路径越过面板右缘压到鲸鱼图标上，改后四折全在圆角框内 · 端口只用 8985，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r351` | 见本行提交 |
+| 2026-11-26 | 7.221 | **一个 177MB 的附件不再把浏览器拖死：大文件改走独立直传，小文件照旧**（**2026-11-26 第三百五十二轮**落地，用户点单；`packages/server` —— 新路由 `POST /api/sessions/:sessionId/attachments`（原始字节直传、边收边计上限）、`services/task-attachments.ts` 的 `receiveAttachment` / `openSessionScratchpad` / `resolveUploadedFile` 与 `{type:"file"}` 的 `path` 形态、`api/types.ts` 三个类型、`runtime/messaging/bridge.ts` 与 `test/session-manager.test.ts` 跟随、新用例 9 条；`packages/web` —— 新 `lib/upload-limits.ts`（`DIRECT_UPLOAD_MIN_BYTES` 2MB / `splitByTransport`）、`features/chat/message-upload-progress.ts`（`ComposerFile` / `resolveComposerFiles` / `filePartsOf` / `steerFileAttachmentsOf`）、`api/client.ts` 的 `rawBody`、`api/xhr-upload.ts`、`api/endpoints.ts` 的 `uploadSessionAttachment`、发送/排队/换模型/交接/草稿/插话六处各多一个 `files` 参数、`lib/video-input.ts`、`lib/strings{,-en}.ts`、新单测 8 条、e2e spec 重写 2 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **接口契约未变**（`src/ifaces.json` unchanged），CSRF 未放宽；**两次 rebase 到 `7a2dc1b41`（编号让给先到的 7.215–7.220）**） | 见「第三百五十二轮」一节（六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`）；逐包 test **`EXIT=0`、0 失败**：server **220 文件 / 3215 通过 / 6 跳过**（本笔 +9）· web **367 文件 / 4097 通过 / 2 跳过**（本笔 +8）· docs **8 / 62**；`oxlint` 0 警告 0 错误 · 改动文件 `prettier --check` 干净 · `git diff --check` 干净；**整套 web e2e 全量（rebase 后重建 core/server/web 再跑）**：**429 passed，38.5 分钟，`E2E_RC=0`，零失败**；新 / 重写的 e2e 两条单跑 **2 passed**：3MB 走直传（CDP 上行限 700KB/s、卡片名 `正在上传 session-2026-11-23-big.jsonl`、`aria-valuemax == 3MB`、`POST …/attachments?name=…`、消息 `附加文件：<名>`、scratchpad `GET` 回长度 3MB）、1MB 走内联（无 `/attachments?` 请求）；相关回归单跑通过 attachment-refusal 2 / upload-refusal 2 / draft 1 / queued-recall-refusal 3 / video-input 1 / steer-reload 1 / handoff-send-refusal 2） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35525,3 +35526,98 @@ prompt 精修）会动内核哈希、要连 `KERNEL_VERSION` 一起推进，单�
   `packages/ui/test/tooltip.test.ts`、`packages/ui-gallery/src/library/boards/tooltips.tsx`、
   `changelog/unreleased/2026-11-26-tooltip-wrap-long-words{,.zh}.md`；台账（条目 7.220、上表那一行、本节）
   随本文件另起一笔。
+
+## 第三百五十二轮：大文件附件改走独立直传，一个 177MB 的附件不再把浏览器拖死（2026-11-26，条目 7.221，用户点单）
+
+**开工自检**：这一轮在临时工作树 `/root/rel-085`（分支 `release-085`）上做，起点是上一轮的 v0.8.5 发布
+点（`7b58cbd66`）。改动与门禁都跑完之后才发现**远端 `main` 在这期间一直在往前走**（从 `7b58cbd66`
+一路到 `fa2ca99d4`、再到 `7a2dc1b41`）：**条目 7.215～7.220 已被先到的几笔占掉**，于是这一笔两次
+rebase（先到 `fa2ca99d4`、再到 `7a2dc1b41`），编号让到 **7.221 / 第三百五十二轮**。树里还留着上一轮发布期
+的东西：三个 stamp 改动（`install.sh` / `install.ps1` / `packages/core/src/index.ts`）与大量未跟踪的发布
+产物（`out/`、`payloads/`、`dist-artifacts/`、`web-prev/`、各包 `LICENSE` 副本、
+`packages/desktop/build/minigit/*`）。**本轮一个没动**，提交时按路径逐个 `add`，绝不 `git add -A`。
+
+**用户点单**：先报「上传到 152mb 宕机了」，接着问「这个上传文件不是直传吗」，然后下单 ——
+「你加一个大文件直传吧，或者根据上传文件大小采用不同的策略，大文件走直传，小文件按原方案」。
+
+**先查清的事实（改之前）**。附件的字节当时是「结果直存、路上不直传」：`features/chat/chat-input.tsx`
+的 `readDataUrl`（`FileReader.readAsDataURL`）把整份文件读成 base64 存进 chip，发送时作为
+`{type:"file", fileName, dataUrl}` 塞进 `POST /api/sessions/:id/tasks` 的**同一个 JSON body**；服务端
+收完整个 body 才解 base64、写进 Session 的 scratchpad（`services/task-attachments.ts` 的
+`attachFilesToInput`）。177MB 的文件因此是 **236.5MB 的请求体**，而页面要同时持有 文件 / base64 串 /
+序列化后的 body 三份量级 —— 死在客户端或链路上。**服务端没宕**：同一 PID、无重启、无 OOM/core、无
+413/5xx、错误中心无记录、cgroup 峰值仅 590MB，只收到约 152MB 后连接断开。
+
+**做了什么**。服务端加一条**会话作用域的直传路由**，`{type:"file"}` part 多一个 `path` 形态：
+
+- `POST /api/sessions/:sessionId/attachments?name=<编码后的文件名>`，body 就是原始字节
+  （`application/octet-stream`，**不是** JSON 里的 base64），边收边写进该会话 scratchpad 的同一套命名
+  规则下；单文件上限**按到达的字节量**判定（不看 `content-length` 声明），超限把半截文件删掉回 413，
+  空文件回 400，回 `{fileName, path, bytes}`（201）。落在 `services/task-attachments.ts` 的新
+  `receiveAttachment` / `openSessionScratchpad` 与 `http/routes/sessions.ts` 的新路由。
+- `{type:"file", fileName, path}`：服务端只校验「路径指向**本会话** scratchpad 目录**直接层**里的普通
+  文件、不是软链」（`lstat` 而非 `stat`，`resolveUploadedFile`），然后原样写
+  `[attached file: <path>]`，**不复制、不移动、不删**。总预算仍要核：`path` 形态按 `fs.stat().size`
+  计入 `assertTotalBytes`，且**先解析测量再写**，所以越限时一个字节都不落盘。
+- 队列消息的撤回：inline 的照旧读回 base64 并删盘；`path` 形态的**返回路径、不读也不删** ——
+  它就是 composer 马上要拿回去的那张 chip，重新编码只会把那个 236MB 的字符串再造一遍。
+- CSRF：`application/octet-stream` 本来就在 `ALLOWED_WRITE_CONTENT_TYPES` 里（热更推送的产物传输
+  用它），这条路由复用，**没有为它放宽任何东西**（它不是 CORS 简单类型，表单伪造不了）。
+
+Web 端按大小分流，阈值 `DIRECT_UPLOAD_MIN_BYTES = 2MB`（`lib/upload-limits.ts` 的 `splitByTransport`）：
+
+- `features/chat/message-upload-progress.ts` 新增 `ComposerFile`（`inline` 带 base64 / `direct` 还握着
+  那个 `File` / `uploaded` 已有路径）、`resolveComposerFiles`（逐个直传，**每个文件一张进度卡**，
+  标题就是文件名）、`filePartsOf` / `steerFileAttachmentsOf`（拼出 part）。
+- 附件在 `chat-input.tsx` 里改成上面那个联合类型：`addAttachments` 先按上限筛、再按 2MB 分两条路，
+  最后**按挑选顺序合并**回一个列表（所以 chip 顺序与 `[attached file: …]` 行的顺序不因分流而乱）。
+- 直传在**发送时**做，不在选文件时：composer 把大文件以 `File` 形式交给宿主（`onSend` /
+  `onQueueFollowUp` / `onHandoff` / `onSwitchModel` / `onSteer` 各多一个 `files` 参数），宿主
+  （`chat-page.tsx` / `draft-view.tsx`）在**拿到 session id 之后**（草稿先建会话，换模型 / 交接先建目标
+  会话）才调 `resolveComposerFiles`，再把 `{type:"file", path}` 追到 parts 末尾。上传失败即本次发送
+  失败、草稿保留（大文件仍是那个 `File`，重试就是重传）。
+- 撤回恢复：inline 的照旧变 chip；`path` 形态的变成 `uploaded` chip，发送时不再重传。
+- `lib/video-input.ts` 的 `appendMediaParts` 不再带文件（文件 part 只在拿到路径之后拼，见上）。
+- 新文案一对（`uploadingAttachment(name)`：「正在上传 <文件名>」/「Uploading <name>」），中英各一份；
+  `packages/docs/content/chat.{zh,en}.md` 的附件一节按新行为重写。
+
+**验证**（门禁与整套 e2e 在 `fa2ca99d4 + 本笔` 的树上跑过；最终落点 `7a2dc1b41` 只比它多一笔
+**只动 `packages/ui` 的 tooltip 排版与画廊**的提交（7.220），故在最终基线上把门禁又重跑了一遍）
+
+- 六包 `pnpm -r typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged` —— 新路由是运行时
+  行为，不进 ifaces 契约）。
+- `oxlint` **0 警告 0 错误**；改动文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包单测（本笔只落在 web 与 server，故跑这两个包 + docs）**`EXIT=0`**：
+  server **220 文件 / 3215 通过 / 6 跳过**（本笔 +9）；web **367 文件 / 4097 通过 / 2 跳过**（本笔 +8）；
+  docs **8 文件 / 62 通过**。
+- **整套 web e2e 全量**（`pnpm -C packages/web test:e2e`，会先构建 core / server / web，临时数据根 +
+  mock 8931 + server 8930，`workers: 1` 串行）：**429 passed，38.5 分钟，`E2E_RC=0`，零失败**；重建出的
+  前端入口 `index-C7BZHd7w.js`。这一遍跑在 `fa2ca99d4 + 本笔` 上（比最终落点少 7.220 那一笔）。
+- 本轮新增 / 重写的 e2e spec 两条，单跑 **2 passed**：
+  - **3MB 走直传**：CDP 把上行限到 700KB/s，卡片名 `正在上传 session-2026-11-23-big.jsonl`、
+    `aria-valuemax == 3MB`、请求是 `POST …/attachments?name=…`、消息里出现 `附加文件：<文件名>`、
+    之后在 scratchpad 里 `GET` 回来长度 **3MB**（证明字节确实落到了盘上）。
+  - **1MB 走内联**：全程**没有** `/attachments?` 请求，scratchpad 里是 1MB（原方案不变）。
+- 相关回归单跑通过：`attachment-refusal` 2、`upload-refusal` 2、`draft` 1、`queued-recall-refusal` 3、
+  `video-input` 1、`steer-reload` 1、`handoff-send-refusal` 2。
+
+**没做 / 留着**：
+
+- 没有用真的 **177MB** 复测（太重、要真模型 key、会占满现网机器的带宽），用的是 3MB 跨过 2MB 阈值
+  走**同一条**直传路径 —— 阈值以上走的是同一段代码，与文件具体多大无关。
+- 被撤回的 `uploaded` 文件如果改投到**另一个会话**（带 `/model` 或 `@agent` chip 发送），它的路径不在
+  目标会话的 scratchpad 里，服务端会明确 400 拒绝。这是极窄的情形：撤回只发生在同一个会话的输入框，
+  而带 switch chip 时那个会话通常正在跑（switch 被挡）。inline 文件不受影响（它们跟着请求走）。
+- 上传失败后重试会产生一个**孤儿副本**（第一次已传上去的那份没人引用），它随会话删除一起清掉 ——
+  与「窗口期孤儿」同一处理，不额外做导入补偿。
+- 阈值 2MB 写死在 Web 里，**不随管理员的上传上限变化**：它分的是「浏览器扛不扛得住」，与「服务端收
+  不收得下」无关。
+- 子代理输入框是纯文本（`variant === "session"` 才收附件），本轮不涉及；桌面 App 与 AMSP 协议未涉及。
+
+### 提交
+
+- 代码一笔：`packages/server`（`src/api/types.ts` / `src/http/routes/sessions.ts` /
+  `src/runtime/messaging/bridge.ts` / `src/services/task-attachments.ts` / `src/auth/middleware.ts`（注释）/
+  `test/session-manager.test.ts` / `test/task-attachments.test.ts`）与 `packages/web`（`src/api/*`、
+  `src/features/chat/*`、`src/lib/*` 共 11 个源文件 + 3 个测试 + 1 个 e2e spec）与
+  `packages/docs/content/chat.{zh,en}.md`；台账（条目 7.221、上表那一行、本节）随本文件另起一笔。
