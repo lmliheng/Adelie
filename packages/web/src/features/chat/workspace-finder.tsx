@@ -1101,7 +1101,7 @@ export function WorkspaceFinder({
           onRemove !== undefined ? "pr-7" : ""
         } ${
           active
-            ? "bg-gray-200 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
+            ? "bg-fg/7 text-fg"
             : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/60"
         }`}
       >
@@ -1707,7 +1707,7 @@ export function WorkspaceFinder({
                       : isSel
                         ? listFocused
                           ? "bg-accent text-accent-fg"
-                          : "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+                          : "bg-fg/7 text-fg"
                         : "cursor-default text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800/60"
                   }`}
                 >
