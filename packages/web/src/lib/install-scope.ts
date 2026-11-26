@@ -251,6 +251,12 @@ export const KEY_RULES: readonly KeyRule[] = [
     scope: "browser",
     why: "The reader's own picture for the pet, as a data: URL: part of the appearance choice above, on the same origin's storage and for the same reason — it is not installation data and nothing on the server names it.",
   },
+  {
+    kind: "exact",
+    key: "penguin.netLog",
+    scope: "browser",
+    why: "The Network panel's own preferences (retention cap, whether to record bodies, inline rows, slow-request highlight); a viewing choice of this browser, naming nothing on the server.",
+  },
 
   // --------------------------------------------------------------- install-scoped state
   {

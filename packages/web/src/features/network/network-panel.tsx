@@ -86,7 +86,9 @@ function KeyValue({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline gap-2 py-0.5">
       <span className="w-16 shrink-0 text-xs text-fg-subtle">{label}</span>
-      <span className="min-w-0 flex-1 break-words font-mono text-xs text-fg">{children}</span>
+      <span className="min-w-0 flex-1 break-words font-mono text-xs tabular-nums text-fg">
+        {children}
+      </span>
     </div>
   );
 }
@@ -102,7 +104,7 @@ function HeaderTable({
   if (rows.length === 0) return <p className="text-xs text-fg-subtle">{S.network.noBody}</p>;
   const shown = revealed ? rows : maskHeaders(rows);
   return (
-    <dl className="space-y-0.5">
+    <dl className="space-y-1">
       {shown.map(([name, value]) => (
         <div key={name} className="flex gap-2">
           <dt className="w-40 shrink-0 break-all font-mono text-xs text-fg-muted">{name}</dt>
@@ -146,7 +148,7 @@ function Waterfall({ entry }: { entry: NetRequest }) {
         <span className="w-20 shrink-0 text-xs text-fg-muted">{S.network.waterfallTotal}</span>
         <div className="h-2 min-w-0 flex-1 rounded-full bg-line-muted">
           <div
-            className={`h-2 rounded-full ${inflight ? "animate-pulse bg-accent" : "bg-fg-muted"}`}
+            className={`h-2 rounded-full ${inflight ? "ui-live animate-pulse bg-accent" : "bg-fg-muted"}`}
             style={{ width: inflight ? "100%" : total > 0 ? "100%" : "0%" }}
           />
         </div>
@@ -414,7 +416,7 @@ function RequestRow({ entry, onOpen }: { entry: NetRequest; onOpen: () => void }
       {pending ? (
         <span
           aria-hidden
-          className={`size-1.5 shrink-0 rounded-full ${toneDot.busy} animate-pulse`}
+          className={`size-1.5 shrink-0 rounded-full ${toneDot.busy} ui-live animate-pulse`}
         />
       ) : (
         <span className="w-1.5 shrink-0" />
