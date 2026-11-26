@@ -357,13 +357,27 @@ export function sessionIdForPath(path: string): string | null {
 
 // -------------------------------------------------------------------------------- masking
 
-const SENSITIVE_QUERY_KEYS = ["key", "token", "api_key", "access_token"];
-
-/** Whether a header or field name names a secret (matched case-insensitively). */
+/**
+ * Names whose value is a secret: the header names the design fixes, the URL parameters it fixes,
+ * and anything else whose name reads like a token, a secret or a password. Matched
+ * case-insensitively; the fixed names are matched whole (so `monkey` is not a `key`), the
+ * patterns by substring.
+ */
 export function isSensitiveName(name: string): boolean {
   const n = name.toLowerCase();
-  if (n === "authorization" || n === "cookie" || n === "set-cookie" || n === "x-api-key")
+  if (
+    n === "authorization" ||
+    n === "cookie" ||
+    n === "set-cookie" ||
+    n === "x-api-key" ||
+    n === "key" ||
+    n === "token" ||
+    n === "api_key" ||
+    n === "apikey" ||
+    n === "access_token"
+  ) {
     return true;
+  }
   return n.includes("token") || n.includes("secret") || n.includes("password");
 }
 
@@ -380,23 +394,33 @@ export function maskHeaders(
   return headers.map(([name, value]) => [name, isSensitiveName(name) ? maskSecret(value) : value]);
 }
 
-/** A URL with its sensitive query parameters masked. */
+/**
+ * A URL with its sensitive query parameters masked. The query string is rewritten in place
+ * (never re-serialized through URLSearchParams, which would percent-encode the mask).
+ */
 export function maskUrlQuery(url: string): string {
   const q = url.indexOf("?");
   if (q === -1) return url;
   const base = url.slice(0, q);
-  const params = new URLSearchParams(url.slice(q + 1));
-  for (const name of SENSITIVE_QUERY_KEYS) {
-    if (params.has(name)) params.set(name, maskSecret(params.get(name) ?? ""));
+  const pairs = url
+    .slice(q + 1)
+    .split("&")
+    .map((pair) => {
+      const eq = pair.indexOf("=");
+      if (eq === -1) return pair;
+      const name = pair.slice(0, eq);
+      if (!isSensitiveName(name)) return pair;
+      return `${name}=${maskSecret(decodeURIComponentSafe(pair.slice(eq + 1)))}`;
+    });
+  return `${base}?${pairs.join("&")}`;
+}
+
+function decodeURIComponentSafe(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
   }
-  // Any parameter whose name otherwise reads like a secret is masked too.
-  for (const [name, value] of [...params.entries()]) {
-    if (!SENSITIVE_QUERY_KEYS.includes(name) && isSensitiveName(name)) {
-      params.set(name, maskSecret(value));
-    }
-  }
-  const qs = params.toString();
-  return qs ? `${base}?${qs}` : base;
 }
 
 /** A JSON body with the values of secret-named fields masked; a non-JSON body is returned as-is. */
