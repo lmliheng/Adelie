@@ -286,6 +286,16 @@ html.dark .shiki span {
 /* `:where` keeps the cell rule at a class's weight, so a surface's own cell rule (a channel
    bubble's deeper line) wins whichever stylesheet a bundle emits first. */
 .md-body :where(th, td) {
+  /* A floor under every column, because the rule above only does half of what it promises:
+     table layout shrinks a column towards its min-content first and only then overflows, and a
+     CJK string's min-content is ONE character. A reply's four-column table on a phone therefore
+     came out with its last column a ribbon one glyph wide and eleven lines tall (measured at
+     390px: 32px/36px columns, 11 lines) — the body never scrolled, because nothing had
+     overflowed yet. Six rems keeps a column at a few characters and stops the shrink there, so
+     the overflow the scroll box was written for actually happens. A cell minimum rather than a
+     table width: a table that already fits is laid out exactly as before (the widths come from
+     the content, not from this), and a cell holding a paragraph still wraps. */
+  min-width: 6rem;
   border: var(--ui-border-w) solid var(--ui-line);
   padding: var(--ui-space-unit) calc(var(--ui-space-unit) * 2);
   font-size: var(--ui-text-body-size);

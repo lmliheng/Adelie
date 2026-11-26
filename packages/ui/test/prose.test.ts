@@ -292,4 +292,26 @@ describe("the content stylesheet", () => {
       css.indexOf(".md-body pre {"),
     );
   });
+
+  /**
+   * A table scrolls horizontally instead of squeezing its columns to nothing. The two rules work
+   * as a pair and neither alone does it: table layout shrinks a column towards its min-content
+   * before it overflows, and a CJK string's min-content is one character — so the scroll box
+   * without a floor leaves the body measuring 390px wide with a 36px column eleven lines tall
+   * and nothing to scroll. The floor is what turns the squeeze into the overflow the box was
+   * written for (measured at 390px: 36px/11 lines before, 96px/4 lines and a scrollable table
+   * after). A change that drops either half is a regression, which is why both are asserted.
+   */
+  it("lets a wide table scroll: a scroll box on the table, a width floor on its cells", () => {
+    const rule = (selector: string): string => {
+      const bare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+      const at = bare.indexOf(`${selector} {`);
+      expect(at, `${selector} is in the stylesheet`).toBeGreaterThan(-1);
+      return bare.slice(at, bare.indexOf("}", at) + 1);
+    };
+    const table = rule(".md-body table");
+    expect(table).toMatch(/display:\s*block/);
+    expect(table).toMatch(/overflow-x:\s*auto/);
+    expect(rule(".md-body :where(th, td)")).toMatch(/min-width:\s*[\d.]+rem/);
+  });
 });
