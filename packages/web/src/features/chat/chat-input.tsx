@@ -169,11 +169,12 @@ import { ContextGauge } from "./context-gauge";
 import { modelWindowBelowCompactionLimit } from "../../lib/context";
 import { splitMediaFiles } from "../../lib/file-drop";
 import { isLongPaste, longPasteFileName } from "../../lib/long-paste";
-import { splitBySize } from "../../lib/upload-limits";
+import { splitBySize, splitByTransport } from "../../lib/upload-limits";
 import { attachmentRefusalLine } from "./attachment-refusal";
 import type { RefusedFile } from "./attachment-refusal";
 import { appendMediaParts, dataUrlBytes, videoFromUrl } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
+import type { ComposerFile } from "./message-upload-progress";
 import type { ComposerReference } from "../../lib/workspace-tree";
 import { ReferenceChip } from "./reference-chip";
 
@@ -465,15 +466,11 @@ const VIDEO_ICON =
   "M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM22 8l-6 4 6 4V8z";
 
 /**
- * One file attachment staged in the composer. `dataUrl` is the base64 `data:` URL sent as the
- * task input's `file` part; `name` / `size` only feed the chip (the server decides the name the
- * file actually gets on disk).
+ * The composer's staged file attachments are `ComposerFile` (features/chat/message-upload-progress):
+ * small files carry a base64 `data:` URL and ride the request the way they always have, large ones
+ * stay as the picked `File` until the send — which knows the Session id — uploads them on their own.
+ * `name` / `size` only feed the chip (the server decides the name the file actually gets on disk).
  */
-interface Attachment {
-  name: string;
-  size: number;
-  dataUrl: string;
-}
 
 /**
  * The upload caps are no longer compiled in here: they are admin-settable and arrive on
@@ -665,8 +662,16 @@ export function ChatInput({
    * Returns whether it succeeded: on failure the input draft is kept (not cleared).
    * `goal` is non-null when goal mode is engaged: the text is the objective and the server
    * loops the Session until the goal reaches a terminal state (budget -1 = unlimited).
+   * `files` are the draft's file attachments, in chip order. They arrive separately from `input`
+   * because a large one still has to be uploaded — the composer does not know which Session it
+   * belongs to until this host has one, so only the host can resolve it (see ComposerFile); the
+   * host appends their `{type:"file"}` parts after `input` (filePartsOf).
    */
-  onSend: (input: TaskInputPart[], goal: { budget: number } | null) => Promise<boolean>;
+  onSend: (
+    input: TaskInputPart[],
+    goal: { budget: number } | null,
+    files: ComposerFile[],
+  ) => Promise<boolean>;
   /**
    * Mid-run steering (session state only): while a Task is running, Enter/send queues the
    * trimmed text **and any attached images, videos and files** for the running agent — delivered
@@ -686,7 +691,7 @@ export function ChatInput({
     text: string,
     images: string[],
     videos: ComposerVideo[],
-    files: { fileName: string; dataUrl: string }[],
+    files: ComposerFile[],
   ) => Promise<"queued" | "not_running" | "failed">;
   /**
    * Count of steering messages already visible in the message stream: the queued hint stays
@@ -719,7 +724,7 @@ export function ChatInput({
    * run finishes. Offered as the "follow-up" choice of the mid-run mode switch; when absent,
    * only steering is offered while running.
    */
-  onQueueFollowUp?: (input: TaskInputPart[]) => Promise<boolean>;
+  onQueueFollowUp?: (input: TaskInputPart[], files: ComposerFile[]) => Promise<boolean>;
   /** Server-reported queued follow-up count (from task_state): renders the "N queued" hint until they auto-send. */
   queuedFollowUps?: number;
   /**
@@ -736,7 +741,11 @@ export function ChatInput({
    * (draft kept on failure). Supplied for an active Session only — a draft has no conversation
    * to hand over, so `/agent` is not offered there (same gating as `/model`'s onSwitchModel).
    */
-  onHandoff?: (target: AgentSummary, input: TaskInputPart[]) => Promise<boolean>;
+  onHandoff?: (
+    target: AgentSummary,
+    input: TaskInputPart[],
+    files: ComposerFile[],
+  ) => Promise<boolean>;
   onStop: () => Promise<void>;
   /** Manual context compaction (/compact). Optional: without it the command is not offered (the draft has no Session to compact, and the subagent variant has no compaction surface). */
   onCompact?: () => Promise<void>;
@@ -758,7 +767,11 @@ export function ChatInput({
    * (draft kept on failure). Only passed for an active session (the command is additionally
    * gated on not running/compacting); picking the current model is a no-op.
    */
-  onSwitchModel?: (ref: ModelRefDto, input: TaskInputPart[]) => Promise<boolean>;
+  onSwitchModel?: (
+    ref: ModelRefDto,
+    input: TaskInputPart[],
+    files: ComposerFile[],
+  ) => Promise<boolean>;
   /**
    * Session state: a pick in the toolbar's model picker, which switches THIS conversation onto
    * the picked model (compacting on the current one first). The parent owns the decision and
@@ -1003,10 +1016,11 @@ export function ChatInput({
   // Nothing here copies the string a clip decodes to: it is read once, stored once, and passed on
   // by reference by every send path (see lib/video-input).
   const [videos, setVideos] = useState<ComposerVideo[]>([]);
-  // File attachments picked from the "+" menu (any type): held as base64 data URLs, exactly
-  // like images — a draft has no Session yet, so there is nothing to upload them to ahead of
-  // time; they travel with the task request and the server files them into the scratchpad.
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  // File attachments picked from the "+" menu (any type). A small one is held as a base64 data URL
+  // and rides the task request exactly like an image; a large one stays the picked `File` and is
+  // uploaded on its own once the send reaches a Session (see ComposerFile). Either way the server
+  // files it into the scratchpad and the message carries its path.
+  const [attachments, setAttachments] = useState<ComposerFile[]>([]);
   /**
    * Quotations staged from the Files panel. Held here rather than in the draft cache, exactly
    * like attachments: what they quote is a file on disk that may have moved on by the time a
@@ -1331,11 +1345,19 @@ export function ChatInput({
       // strand them behind a dead Send (why: see mergeRecalledDraft).
       if (dropGoal) toggleGoal(false);
       setAttachments((prev) => [
-        ...r.files.map((f) => ({
-          name: f.fileName,
-          size: dataUrlBytes(f.dataUrl),
-          dataUrl: f.dataUrl,
-        })),
+        // A small attachment comes back as the data URL it was submitted as; a direct-uploaded one
+        // as the scratchpad path the server left in place (re-encoding it would rebuild the very
+        // base64 string the upload route exists to avoid) — an `uploaded` chip, no re-upload needed.
+        ...r.files.map((f): ComposerFile =>
+          "path" in f
+            ? { kind: "uploaded", name: f.fileName, size: f.bytes, path: f.path }
+            : {
+                kind: "inline",
+                name: f.fileName,
+                size: dataUrlBytes(f.dataUrl),
+                dataUrl: f.dataUrl,
+              },
+        ),
         ...prev,
       ]);
     }
@@ -1793,10 +1815,14 @@ export function ChatInput({
    * normal path; the steering fallback calls this directly after the server said 409
    * not_running, when the local `status` may still lag behind).
    */
-  // `post` accepts onSend's goal parameter so onSend can be its default; the follow-up queue
-  // (fewer params) is assignable too. Non-goal calls always pass null.
+  // `post` accepts onSend's goal and files parameters so onSend can be its default; the follow-up
+  // queue (which takes no goal) is assignable too. Non-goal calls always pass null.
   const sendNormal = async (
-    post: (input: TaskInputPart[], goal: { budget: number } | null) => Promise<boolean> = onSend,
+    post: (
+      input: TaskInputPart[],
+      goal: { budget: number } | null,
+      files: ComposerFile[],
+    ) => Promise<boolean> = onSend,
   ) => {
     const t = text.trim();
     // Goal mode: the trimmed text is the objective (no file attachments, no staged switch —
@@ -1816,7 +1842,7 @@ export function ChatInput({
         for (const clip of videos) {
           goalInput.push({ type: "video_url", videoUrl: clip.dataUrl, fileName: clip.name });
         }
-        const ok = await onSend(goalInput, { budget: goalBudget! });
+        const ok = await onSend(goalInput, { budget: goalBudget! }, []);
         if (ok) {
           setText("");
           setImages([]);
@@ -1859,17 +1885,18 @@ export function ChatInput({
     const body = buildSkillsMessage(selectedSkills, bodyText);
     const input: TaskInputPart[] = [];
     if (body) input.push({ type: "text", text: body });
-    appendMediaParts(input, images, videos, attachments);
+    appendMediaParts(input, images, videos);
     setBusy(true);
     try {
       const ok = target
-        ? await onHandoff!(target, input)
+        ? await onHandoff!(target, input, attachments)
         : switchModel
           ? await onSwitchModel!(
               { provider: switchModel.provider, modelId: switchModel.modelId },
               input,
+              attachments,
             )
-          : await post(input, null);
+          : await post(input, null, attachments);
       // Only clear the draft after a successful send: on failure (network / conflict / server error) keep the user's input and attachments.
       if (ok) {
         setText("");
@@ -1896,7 +1923,7 @@ export function ChatInput({
       // mode, and steer mode meeting a draft steering cannot carry — since the message sent is
       // the same either way.
       if (queueAction) {
-        await sendNormal(onQueueFollowUp!);
+        await sendNormal((input, _goal, files) => onQueueFollowUp!(input, files));
         return;
       }
       // Steering branch: queue the trimmed text, the attached images, videos and files
@@ -1906,7 +1933,7 @@ export function ChatInput({
       const steerText = withReferences(references, text.trim());
       const steerImages = images;
       const steerVideos = videos;
-      const steerFiles = attachments.map((f) => ({ fileName: f.name, dataUrl: f.dataUrl }));
+      const steerFiles = attachments;
       setBusy(true);
       let res: "queued" | "not_running" | "failed" = "failed";
       try {
@@ -1932,7 +1959,10 @@ export function ChatInput({
       // seam: it starts immediately when idle, or queues behind the last sliver of the old run.
       // A plain Task POST could race the manager's idle flip and return 409, stranding the draft
       // on a reloaded page (#89).
-      if (res === "not_running") await sendNormal(onQueueFollowUp ?? onSend);
+      if (res === "not_running")
+        await sendNormal(
+          onQueueFollowUp ? (input, _goal, files) => onQueueFollowUp(input, files) : onSend,
+        );
       return;
     }
     if (!canSend) return;
@@ -2123,9 +2153,11 @@ export function ChatInput({
   };
 
   /**
-   * File attachments (any type, no `accept` filter): read as base64 data URLs, the same
-   * transport images use — a draft has no Session to upload to yet. The name and size come
-   * from the File itself and only feed the chip; the server decides the on-disk name.
+   * File attachments (any type, no `accept` filter): a small one is read into a base64 data URL,
+   * the same transport images use; a large one is kept as the picked `File` and uploaded on its own
+   * once the send reaches a Session (see ComposerFile / lib/upload-limits DIRECT_UPLOAD_MIN_BYTES).
+   * Either way the name and size come from the File itself and only feed the chip; the server
+   * decides the on-disk name.
    *
    * Oversize files are rejected from `File.size` before anything is read, the same way trace
    * import does it (traces-page.tsx): base64-encoding a rejected file in the tab first would
@@ -2133,7 +2165,9 @@ export function ChatInput({
    *
    * The whole batch is read before any of it is staged, so the chips — and therefore the
    * `[attached file: …]` lines the message ends up with — follow the order the files were
-   * picked in, not the order the reads happened to finish in.
+   * picked in, not the order the reads happened to finish in. That ordering is why the two
+   * transports are decided per file and then merged back, rather than staging the inline half and
+   * leaving the large half for later: it would file every large file after every small one.
    */
   const addAttachments = (files: Iterable<File>): RefusedFile[] => {
     if (goalOn) return []; // a goal takes no file attachments: the server refuses them
@@ -2143,10 +2177,19 @@ export function ChatInput({
       limitMb: uploadLimits.attachmentMaxMb,
     }));
     if (picked.length === 0) return refused;
-    void Promise.all(picked.map(readDataUrl)).then((urls) => {
-      const staged = picked.flatMap((file, i) =>
-        urls[i] ? [{ name: file.name, size: file.size, dataUrl: urls[i]! }] : [],
-      );
+    const { inline: inlineFiles, direct: directFiles } = splitByTransport(picked);
+    const direct = new Set(directFiles);
+    void Promise.all(
+      inlineFiles.map(async (file) => ({ file, url: await readDataUrl(file) })),
+    ).then((read) => {
+      const urlOf = new Map(read.flatMap(({ file, url }) => (url ? [[file, url] as const] : [])));
+      const staged = picked.flatMap<ComposerFile>((file) => {
+        if (direct.has(file)) {
+          return [{ kind: "direct", name: file.name, size: file.size, file }];
+        }
+        const url = urlOf.get(file);
+        return url ? [{ kind: "inline", name: file.name, size: file.size, dataUrl: url }] : [];
+      });
       if (staged.length > 0) setAttachments((prev) => [...prev, ...staged]);
     });
     return refused;

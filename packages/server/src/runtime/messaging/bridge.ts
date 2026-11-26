@@ -794,11 +794,17 @@ function inboundRecallStore(
 ): RecallStore {
   return {
     ...recallStoreOf(input),
-    files: written.map((filePath, i) => ({
-      fileName: attachments[i]!.fileName,
-      path: filePath,
-      mime: attachments[i]!.mime,
-    })),
+    files: written.map((filePath, i) => {
+      // Every attachment here came from a channel download, so it is inline by construction;
+      // the mime decides what a recall re-encodes its data URL from (see TaskAttachment).
+      const a = attachments[i]!;
+      return {
+        fileName: a.fileName,
+        path: filePath,
+        mime: a.kind === "inline" ? a.mime : "",
+        uploaded: false,
+      };
+    }),
   };
 }
 
@@ -1486,12 +1492,13 @@ export class MessagingBridge {
     input: OmniMessage[],
     attachments: readonly TaskAttachment[],
   ): Promise<AttachedFiles> {
-    if (attachments.length === 0) return { input, written: [] };
+    if (attachments.length === 0) return { input, written: [], files: [] };
     const row = this.deps.sessions.findById(entry.sessionId);
     if (row === null) throw new Error(`session ${entry.sessionId} no longer exists`);
     return attachFilesToInput(
       input,
       [...attachments],
+      this.deps.attachmentLimits(),
       scratchpadDir(this.deps.root, row.projectId, row.agentId),
       entry.sessionId,
     );
@@ -1543,7 +1550,7 @@ export class MessagingBridge {
         // `mime` is what a queued message's recall re-encodes its data URL from. A channel
         // states a media type about a file nothing here parses, so an empty one is the honest
         // value rather than a guess — readRecalledFiles substitutes the generic type.
-        attachments.push({ fileName: file.fileName, bytes: data, mime: "" });
+        attachments.push({ kind: "inline", fileName: file.fileName, bytes: data, mime: "" });
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
         this.log(`[messaging] ${entry.channel} file fetch failed: ${reason}`);

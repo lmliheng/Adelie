@@ -2867,16 +2867,25 @@ export type TaskInputPart =
    */
   | { type: "video_url"; videoUrl: string; fileName?: string }
   /**
-   * File attachment (the composer's "+" menu): `dataUrl` is a base64 `data:` URL of the
-   * file's bytes, capped per file and per message by the admin-settable upload limits
-   * (defaults 100MB / 120MB; 413 `file_too_large` / `payload_too_large` / `too_many_files`,
-   * and the request as a whole still has to fit the body cap those limits derive). The
-   * server writes it into the Session scratchpad under a sanitized name and appends an
-   * `[attached file: <path>]` line to the message text — the bytes never enter the
-   * conversation, the model opens the file by path. `fileName` is the original name (no path
-   * separators, no `..`).
+   * File attachment (the composer's "+" menu). Two shapes, decided by the file's size:
+   *
+   * - `dataUrl` — a base64 `data:` URL of the file's bytes, riding this request. Capped per
+   *   file and per message by the admin-settable upload limits (defaults 100MB / 120MB; 413
+   *   `file_too_large` / `payload_too_large` / `too_many_files`, and the request as a whole
+   *   still has to fit the body cap those limits derive).
+   * - `path` — the scratchpad path `POST /api/sessions/:sessionId/attachments` handed back
+   *   for a file the composer uploaded on its own first. The server only checks that the path
+   *   names a regular file directly inside *this* Session's scratchpad; nothing is copied.
+   *   This is the large-file path: base64 in the body is what a browser tab dies on well
+   *   before the 100MB cap is reached (a 177MB file is a 236MB body), while a raw upload
+   *   streams the picked `File` from disk with nothing held whole on either side.
+   *
+   * Either way the server appends an `[attached file: <path>]` line to the message text — the
+   * bytes never enter the conversation, the model opens the file by path. `fileName` is the
+   * original name (no path separators, no `..`).
    */
-  | { type: "file"; fileName: string; dataUrl: string };
+  | { type: "file"; fileName: string; dataUrl: string; path?: undefined }
+  | { type: "file"; fileName: string; path: string; dataUrl?: undefined };
 
 export interface TaskCreateRequest {
   input: TaskInputPart[];
@@ -3006,14 +3015,20 @@ export interface SteerRequest {
    */
   videos?: string[];
   /**
-   * File attachments riding the steering message — the same shape, caps and handling as a
-   * task input's `{type:"file"}` parts: written into the Session scratchpad and delivered
-   * as `[attached file: <path>]` lines on the `[user_steering]` text, so a file-only draft
+   * File attachments riding the steering message — the same two shapes, caps and handling as
+   * a task input's `{type:"file"}` parts (see TaskInputPart): written into the Session
+   * scratchpad (or, for the larger ones, uploaded there first) and delivered as
+   * `[attached file: <path>]` lines on the `[user_steering]` text, so a file-only draft
    * steers exactly like an image-only one instead of falling back to the follow-up queue.
    * A video on a model without video input is sent this way.
    */
-  files?: { fileName: string; dataUrl: string }[];
+  files?: SteerFileAttachment[];
 }
+
+/** One file attachment of a steering message: a base64 `dataUrl` riding the request, or the `path` of a file the composer uploaded to the Session scratchpad first (see TaskInputPart's `file` part). */
+export type SteerFileAttachment =
+  | { fileName: string; dataUrl: string; path?: undefined }
+  | { fileName: string; path: string; dataUrl?: undefined };
 
 /**
  * One steering message queued on the server but not yet delivered to the model (delivery
@@ -3096,8 +3111,33 @@ export interface RecalledMessageResponse {
   images: string[];
   /** The inline videos as submitted (`data:video/…` / http(s) URLs); a model without video input got them as files instead. */
   videos: string[];
-  /** The file attachments, re-encoded as base64 data URLs (the shape the composer submits them in). */
-  files: { fileName: string; dataUrl: string }[];
+  /**
+   * The file attachments. A small one comes back as the base64 `dataUrl` it was submitted as
+   * (and its scratchpad copy is deleted — the composer holds the bytes again). One the
+   * composer uploaded itself comes back as its `path`, which is also left on disk: the file is
+   * the composer's again, and re-encoding it would rebuild the very base64 string the upload
+   * route exists to avoid.
+   */
+  files: RecalledFile[];
+}
+
+/** One recalled file attachment: `dataUrl` for an inline one, `path` (+ size) for a direct-uploaded one — see RecalledMessageResponse.files. */
+export type RecalledFile =
+  { fileName: string; dataUrl: string } | { fileName: string; path: string; bytes: number };
+
+/**
+ * POST /api/sessions/:sessionId/attachments — the composer's direct upload for one file whose
+ * bytes travel as the raw request body (not base64, not JSON), so a large attachment costs
+ * neither side a copy of itself in memory. The name comes from the `name` query parameter; the
+ * server sanitizes it, resolves collisions and answers with where the bytes actually landed.
+ * That `path` is what a `{type:"file", path}` part (see TaskInputPart) then names.
+ */
+export interface AttachmentUploadResponse {
+  /** The name the file got on disk (sanitized; not necessarily the submitted one). */
+  fileName: string;
+  /** Absolute scratchpad path of the written file, inside this Session's own scratchpad directory. */
+  path: string;
+  bytes: number;
 }
 
 export interface ApprovalDecisionRequest {

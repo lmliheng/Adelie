@@ -2,10 +2,10 @@
  * The one transport that reports how much of its body has gone out.
  *
  * `fetch` has no upload-progress event at all, so a request that needs one has to go out as an
- * XMLHttpRequest. This is the only reason the module exists: the task and steer routes carry a
- * message's attachments **inline** (base64 `data:` URLs — see the server's attachment-limits.ts for
- * why, and for the 200MB ceiling that makes a body up to ~267MB after base64 has inflated it), and
- * a body that size on a slow link is minutes of the page saying nothing whatsoever.
+ * XMLHttpRequest. Two calls need it: the direct attachment upload (a raw `File`, streamed from
+ * disk — a `Blob` body is handed to the browser as-is, never read into a string here) and the
+ * task/steer routes when a message still carries its bytes inline as base64 `data:` URLs (small
+ * attachments only; anything large has been uploaded separately — see chat-input.tsx).
  *
  * The answer is handed back as a real `Response`, not as XHR's own result shape, so everything
  * downstream of the transport — the non-2xx → ApiError mapping, the `Date`/`ETag` reads, the empty
@@ -92,6 +92,6 @@ export function xhrUpload(
       signal.addEventListener("abort", abort, { once: true });
       xhr.addEventListener("loadend", () => signal.removeEventListener("abort", abort));
     }
-    xhr.send(typeof init.body === "string" ? init.body : null);
+    xhr.send(typeof init.body === "string" || init.body instanceof Blob ? init.body : null);
   });
 }

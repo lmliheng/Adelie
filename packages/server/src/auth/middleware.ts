@@ -134,9 +134,11 @@ const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 /**
  * CSRF defense: a write must carry one of these Content-Types, none of which an HTML form can
  * forge (a form is limited to x-www-form-urlencoded, multipart/form-data, text/plain). json is
- * the API default; gzip and octet-stream are the hot-update web push's artifact transport
- * (src/hmr). A write with NO Content-Type and an empty body is let through — a form always
- * sends a form-type one.
+ * the API default; gzip and octet-stream are the binary transports — the hot-update web push's
+ * artifact (src/hmr) and, on one route only, a Session's direct attachment upload (POST
+ * /api/sessions/:id/attachments, whose whole point is bytes that never become base64 in JSON).
+ * A write with NO Content-Type and an empty body is let through — a form always sends a
+ * form-type one.
  */
 const ALLOWED_WRITE_CONTENT_TYPES = [
   "application/json",

@@ -71,7 +71,12 @@ import { versionBadgeFor } from "../../lib/update-flow";
 import { openUpdateModal, useUpdateFlow } from "../../lib/use-update-flow";
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
-import { postTaskWithUploadProgress } from "./message-upload-progress";
+import {
+  filePartsOf,
+  postTaskWithUploadProgress,
+  resolveComposerFiles,
+} from "./message-upload-progress";
+import type { ComposerFile } from "./message-upload-progress";
 import { APPROVAL_MODES } from "./approval-mode";
 import { adoptDockScope, currentDockScope } from "../dock/dock-state";
 import { setDockCwd } from "../dock/dock-terminal";
@@ -774,7 +779,11 @@ export function DraftView({
   // failure, so the input area keeps the draft and can resend — with the reason left under the
   // card by the catch below.
   const onSend = useCallback(
-    async (input: TaskInputPart[], goal: { budget: number } | null = null): Promise<boolean> => {
+    async (
+      input: TaskInputPart[],
+      goal: { budget: number } | null = null,
+      files: ComposerFile[] = [],
+    ): Promise<boolean> => {
       if (!agentId || sendingRef.current) return false;
       sendingRef.current = true;
       // This attempt's own reason, not the one the attempt before it left (one attempt, one reason).
@@ -795,8 +804,11 @@ export function DraftView({
         // Created ON the machine that owns the workspace: that server runs the agent in it.
         const created = await api.createSession(projectId, agentId, body, workspaceMachine);
         createdId = created.session.sessionId;
+        // The draft's large attachments are uploaded to the Session that was just created; only now
+        // is there a Session to scope them to (see ComposerFile).
+        const resolved = await resolveComposerFiles(createdId, files);
         const res = await postTaskWithUploadProgress(createdId, {
-          input,
+          input: [...input, ...filePartsOf(resolved)],
           ...(goal ? { goal } : {}),
         });
         // postTask answers with the CURRENT id: a Session with no Trace whose process

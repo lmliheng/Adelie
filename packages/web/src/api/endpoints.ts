@@ -9,6 +9,7 @@ import type {
   AdminUserCreateRequest,
   AdminUserCreateResponse,
   AdminUsersResponse,
+  AttachmentUploadResponse,
   AgentApiKeyCreateRequest,
   AgentApiKeyCreateResponse,
   AgentApiResponse,
@@ -1443,6 +1444,26 @@ export const postSteer = (
   apiFetch<void>(`/api/sessions/${encodeURIComponent(sessionId)}/steer`, {
     method: "POST",
     body,
+    ...(onUploadProgress !== undefined ? { onUploadProgress } : {}),
+  });
+
+/**
+ * Upload one file attachment straight into the Session scratchpad — the large-file half of the
+ * composer's attachment path. The `File` IS the body (raw bytes, `application/octet-stream`), so
+ * the browser streams it from disk: no base64 string, no copy of it inside a task body, and no
+ * reason for the page to hold the file at all. The answer's `path` is what a
+ * `{type:"file", path}` part then names (see TaskInputPart).
+ */
+export const uploadSessionAttachment = (
+  sessionId: string,
+  file: File,
+  name: string,
+  onUploadProgress?: (sent: number, total: number) => void,
+) =>
+  apiFetch<AttachmentUploadResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/attachments`, {
+    method: "POST",
+    query: { name },
+    rawBody: file,
     ...(onUploadProgress !== undefined ? { onUploadProgress } : {}),
   });
 

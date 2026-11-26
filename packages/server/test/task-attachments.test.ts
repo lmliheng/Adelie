@@ -473,3 +473,216 @@ describe("task attachments are removed when the Task never starts", () => {
     expect(await fs.readdir(dir).catch(() => [])).toEqual([]);
   });
 });
+
+/**
+ * The large-file half of the composer's attachment path: a file big enough that base64-in-the-body
+ * is what kills a browser tab is uploaded on its own first (`POST …/attachments`, raw bytes), and
+ * the task/steer body then names it with a `path`-shaped `{type:"file"}` part. These tests pin the
+ * contract the Web relies on:
+ *
+ * - The upload route streams the body into the Session scratchpad and answers where it landed; the
+ *   per-file cap is measured as the bytes arrive, and a refusal leaves no half file.
+ * - A `path` part is only checked and named — nothing is copied, and the scratchpad keeps exactly
+ *   the one copy the composer uploaded.
+ * - A path outside the Session's own scratchpad is refused rather than becoming a marker line the
+ *   model then opens.
+ * - The aggregate cap still counts a `path` part, by the real size of the file it names.
+ * - A queued message's recall hands a direct-uploaded file back as its path and leaves it on disk
+ *   (it IS the chip the composer is getting back), where an inline one is re-encoded and deleted.
+ */
+describe("direct attachment uploads (large files)", () => {
+  let t: TestApp;
+  let api: ReturnType<typeof apiClient>;
+  let cookie: string;
+  let SID: string;
+  let runs: OmniMessage[][];
+  let dir: string;
+  let row: SessionRow;
+
+  beforeAll(async () => {
+    t = await createTestApp();
+    const provisioned = await provisionUser(t.app, "attacher");
+    cookie = provisioned.cookie;
+    api = apiClient(t.app, cookie);
+    // Same deliberately tiny caps as the inline suite above, so a "too large" test costs kilobytes.
+    t.deps.serverSettingsRepo.setAttachmentMaxMb(TEST_MAX_MB);
+    t.deps.serverSettingsRepo.setAttachmentTotalMb(TEST_TOTAL_MB);
+  });
+  afterAll(async () => {
+    await t.cleanup();
+  });
+  beforeEach(() => {
+    SID = uniqueSessionId();
+    runs = [];
+    row = adoptSession(t.deps, recordingFakeSession(SID, runs), { projectId: PROJECT_ID });
+    dir = path.join(scratchpadDir(t.root, PROJECT_ID, "default_agent"), SID);
+  });
+
+  /** POST raw bytes the way the composer's XHR does: `application/octet-stream`, name in the query. */
+  const upload = (bytes: Uint8Array, name = "big.bin", sessionId = SID) =>
+    t.app.request(`/api/sessions/${sessionId}/attachments?name=${encodeURIComponent(name)}`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/octet-stream" },
+      body: bytes,
+    });
+
+  it("streams the bytes into the scratchpad and answers where they landed", async () => {
+    const res = await upload(Buffer.from("hello direct"), "report.pdf");
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { fileName: string; path: string; bytes: number };
+    expect(body).toEqual({
+      fileName: "report.pdf",
+      path: path.join(dir, "report.pdf"),
+      bytes: 12,
+    });
+    expect(await fs.readFile(body.path, "utf8")).toBe("hello direct");
+  });
+
+  it("sanitizes the name it is given rather than trusting it", async () => {
+    const res = await upload(Buffer.from("x"), "my report (final).csv");
+    expect(res.status).toBe(201);
+    expect(path.basename(((await res.json()) as { fileName: string }).fileName)).toBe(
+      "my-report--final-.csv",
+    );
+  });
+
+  it("refuses a name that is missing or looks like a path, before anything is written", async () => {
+    for (const bad of ["", "sub/dir.txt", "../escape.txt", "a\\b.txt"]) {
+      const res = await t.app.request(
+        `/api/sessions/${SID}/attachments?name=${encodeURIComponent(bad)}`,
+        {
+          method: "POST",
+          headers: { cookie, "content-type": "application/octet-stream" },
+          body: Buffer.from("x"),
+        },
+      );
+      expect(res.status, JSON.stringify(bad)).toBe(400);
+    }
+    const noName = await t.app.request(`/api/sessions/${SID}/attachments`, {
+      method: "POST",
+      headers: { cookie, "content-type": "application/octet-stream" },
+      body: Buffer.from("x"),
+    });
+    expect(noName.status).toBe(400);
+    expect(await fs.readdir(dir).catch(() => [])).toEqual([]);
+  });
+
+  it("measures the per-file cap as the bytes arrive and leaves no half file behind", async () => {
+    const res = await upload(Buffer.alloc(TEST_MAX_BYTES + 1));
+    expect(res.status).toBe(413);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe("file_too_large");
+    expect(await fs.readdir(dir).catch(() => [])).toEqual([]);
+  });
+
+  it("refuses an empty body", async () => {
+    const res = await upload(Buffer.alloc(0));
+    expect(res.status).toBe(400);
+  });
+
+  it("a path part is only checked and named — no copy, one file on disk", async () => {
+    const up = (await (await upload(Buffer.from("direct bytes"))).json()) as {
+      path: string;
+      fileName: string;
+    };
+    const res = await api.post(`/api/sessions/${SID}/tasks`, {
+      input: [
+        { type: "text", text: "look at this" },
+        { type: "file", fileName: "big.bin", path: up.path },
+      ],
+    });
+    expect(res.status).toBe(202);
+    await waitFor(() => runs.length === 1);
+
+    const text = promptText(runs[0]!);
+    expect(text.startsWith("look at this")).toBe(true);
+    expect(text).toContain(`[attached file: ${modelVisiblePath(up.path)}]`);
+    // Exactly the composer's own upload, in place: the task route wrote nothing of its own.
+    expect(await fs.readdir(dir)).toEqual([path.basename(up.path)]);
+    expect(await fs.readFile(up.path, "utf8")).toBe("direct bytes");
+  });
+
+  it("refuses a path outside this Session's scratchpad", async () => {
+    const outside = path.join(t.root, "outside.bin");
+    await fs.writeFile(outside, "nope");
+    const res = await api.post(`/api/sessions/${SID}/tasks`, {
+      input: [{ type: "file", fileName: "x.bin", path: outside }],
+    });
+    expect(res.status).toBe(400);
+    expect(runs).toHaveLength(0);
+    // The file is left alone: nothing opened it, nothing moved it.
+    expect(await fs.readFile(outside, "utf8")).toBe("nope");
+  });
+
+  it("counts a path part toward the aggregate cap by its real size, and writes nothing on refusal", async () => {
+    // 1.5MB uploaded, plus a 2MB inline part (exactly the per-file cap): together 3.5MB, over the
+    // 3MB aggregate. The per-file checks both pass, so only the aggregate can be what refuses it.
+    const half = Buffer.alloc(Math.floor(TEST_TOTAL_BYTES / 2)); // 1.5MB
+    const up = (await (await upload(half, "half.bin")).json()) as { path: string };
+    const res = await api.post(`/api/sessions/${SID}/tasks`, {
+      input: [
+        { type: "file", fileName: "half.bin", path: up.path },
+        {
+          type: "file",
+          fileName: "extra.bin",
+          dataUrl: `data:application/octet-stream;base64,${Buffer.alloc(TEST_MAX_BYTES).toString("base64")}`,
+        },
+      ],
+    });
+    expect(res.status).toBe(413);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      "payload_too_large",
+    );
+    // The inline half was never written; only the composer's own upload is there.
+    expect(await fs.readdir(dir)).toEqual([path.basename(up.path)]);
+  });
+
+  it("a queued message's direct-uploaded file comes back by path and stays on disk", async () => {
+    // Park the Session so the follow-up is held rather than sent — the only way a recall exists.
+    let release = () => {};
+    const parked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    t.deps.manager.adopt(row, parkingFakeSession(SID, parked));
+    await api.post(`/api/sessions/${SID}/tasks`, { input: [{ type: "text", text: "busy" }] });
+    await waitFor(() => t.deps.manager.statusOf(SID) === "running");
+
+    const up = (await (await upload(Buffer.from("direct bytes"), "big.bin")).json()) as {
+      path: string;
+    };
+    await api.post(`/api/sessions/${SID}/tasks`, {
+      input: [
+        { type: "text", text: "queued" },
+        { type: "file", fileName: "big.bin", path: up.path },
+        { type: "file", fileName: "small.txt", dataUrl: dataUrl("inline bytes") },
+      ],
+      queueIfBusy: true,
+    });
+    const pending = t.deps.manager.pendingFollowUpsOf(SID);
+    expect(pending).toHaveLength(1);
+
+    const res = await api.delete(`/api/sessions/${SID}/follow-ups/${pending[0]!.id}`);
+    expect(res.status).toBe(200);
+    const recalled = (await res.json()) as {
+      files: (
+        { fileName: string; path: string; bytes: number } | { fileName: string; dataUrl: string }
+      )[];
+    };
+    // The direct-uploaded one is handed back as its path — re-encoding it would rebuild exactly
+    // the base64 string the upload route exists to avoid — and its file is left in place.
+    expect(recalled.files.find((f) => f.fileName === "big.bin")).toEqual({
+      fileName: "big.bin",
+      path: up.path,
+      bytes: 12,
+    });
+    expect(await fs.readFile(up.path, "utf8")).toBe("direct bytes");
+    // The small one comes back as the data URL it was submitted as, and its disk copy is gone.
+    expect(recalled.files.find((f) => f.fileName === "small.txt")).toEqual({
+      fileName: "small.txt",
+      dataUrl: dataUrl("inline bytes"),
+    });
+    expect(await fs.readdir(dir)).toEqual([path.basename(up.path)]);
+
+    release();
+    await waitFor(() => t.deps.manager.statusOf(SID) === "idle");
+  });
+});

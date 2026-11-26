@@ -70,36 +70,25 @@ describe("videoFromUrl — a recalled clip back in the draft", () => {
   });
 });
 
-describe("appendMediaParts — what a task's input carries", () => {
-  const parts = (
-    images: string[],
-    videos: ComposerVideo[],
-    files: { name: string; dataUrl: string }[],
-  ) => {
+describe("appendMediaParts — the inline half of a task's input", () => {
+  const parts = (images: string[], videos: ComposerVideo[]) => {
     const input: TaskInputPart[] = [{ type: "text", text: "look" }];
-    appendMediaParts(input, images, videos, files);
+    appendMediaParts(input, images, videos);
     return input;
   };
 
-  it("appends images, then videos (with the picked name), then files", () => {
-    expect(
-      parts(
-        ["data:image/png;base64,AAAA"],
-        [clip("holiday.mp4")],
-        [{ name: "notes.txt", dataUrl: "data:text/plain;base64,AAAA" }],
-      ),
-    ).toEqual([
+  it("appends images, then videos (with the picked name)", () => {
+    expect(parts(["data:image/png;base64,AAAA"], [clip("holiday.mp4")])).toEqual([
       { type: "text", text: "look" },
       { type: "image_url", imageUrl: "data:image/png;base64,AAAA" },
       { type: "video_url", videoUrl: MP4, fileName: "holiday.mp4" },
-      { type: "file", fileName: "notes.txt", dataUrl: "data:text/plain;base64,AAAA" },
     ]);
   });
 
   it("sends the clip's data URL by reference and in pick order", () => {
     const first = clip("1.mp4");
     const second = clip("2.mp4");
-    const input = parts([], [first, second], []).slice(1); // past the text part
+    const input = parts([], [first, second]).slice(1); // past the text part
     expect(input.map((p) => (p.type === "video_url" ? p.videoUrl : ""))).toEqual([MP4, MP4]);
     // The URL the part carries IS the staged string (no copy was made on the way).
     expect((input[0] as { videoUrl: string }).videoUrl).toBe(first.dataUrl);
@@ -107,7 +96,7 @@ describe("appendMediaParts — what a task's input carries", () => {
   });
 
   it("adds nothing for an empty draft", () => {
-    expect(parts([], [], [])).toEqual([{ type: "text", text: "look" }]);
+    expect(parts([], [])).toEqual([{ type: "text", text: "look" }]);
   });
 });
 

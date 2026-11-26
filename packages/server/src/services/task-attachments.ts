@@ -20,6 +20,7 @@ import { appendAttachmentLines, attachedFileLine, modelVisiblePath } from "@adel
 import type { OmniMessage } from "@adelie/core";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
+import type { RecalledFile } from "../api/types.js";
 import type { AttachmentLimits } from "./attachment-limits.js";
 
 /**
@@ -78,8 +79,20 @@ function truncateBytes(value: string, maxBytes: number): string {
 /** The 6-hex space makes a second collision negligible; the cap only guards against a filesystem stuck on EEXIST. */
 const MAX_NAME_ATTEMPTS = 16;
 
-/** One validated attachment, bytes already decoded (they are held in memory only until the write below). */
-export interface TaskAttachment {
+/**
+ * One validated attachment, in either of the two shapes a `{type:"file"}` part may take.
+ *
+ * The bytes reach the scratchpad by one of two routes, and the difference is only ever *where
+ * they are when the request arrives*: `inline` means they rode this request as a base64 data
+ * URL (the composer's small-file path), `uploaded` means the composer already sent them to
+ * `POST /api/sessions/:id/attachments` and the part carries the path that route handed back
+ * (its large-file path — a file big enough that base64-in-the-body is what breaks a browser
+ * tab, see chat-input.tsx).
+ */
+export type TaskAttachment = InlineAttachment | UploadedAttachment;
+
+interface InlineAttachment {
+  kind: "inline";
   /** Original file name as submitted (validated: non-empty, no path separators, no `..`). */
   fileName: string;
   bytes: Buffer;
@@ -89,6 +102,14 @@ export interface TaskAttachment {
    * on-disk bytes into the same data URL shape the composer submitted (see readRecalledFiles).
    */
   mime: string;
+}
+
+interface UploadedAttachment {
+  kind: "uploaded";
+  /** Original file name as submitted (same validation as an inline one; the name on disk was decided by the upload route). */
+  fileName: string;
+  /** Scratchpad path returned by the upload route — resolved and contained in attachFilesToInput. */
+  path: string;
 }
 
 /**
@@ -120,6 +141,19 @@ export function parseAttachmentPart(
       `${field}[${index}].fileName must be a non-empty file name without path separators or "..".`,
     );
   }
+  // The direct-upload shape: the composer has already put the bytes in this Session's
+  // scratchpad (POST …/attachments) and the part names that file. It carries no `dataUrl` —
+  // the whole point is that the bytes never travel in this request — and the path is
+  // resolved and contained where the directory is known (attachFilesToInput), not here.
+  if (part.path !== undefined) {
+    if (part.dataUrl !== undefined) {
+      throw badRequest(`${field}[${index}] must carry either dataUrl or path, not both.`);
+    }
+    if (typeof part.path !== "string" || part.path.length === 0 || part.path.includes("\0")) {
+      throw badRequest(`${field}[${index}].path must be a non-empty string.`);
+    }
+    return { kind: "uploaded", fileName, path: part.path };
+  }
   const dataUrl = part.dataUrl;
   // `[^,]*` for the media type, not `[^;,]*`: a browser may hand out parameters
   // (`data:text/plain;charset=utf-8;base64,…`), and only the `;base64,` marker separates the
@@ -141,7 +175,7 @@ export function parseAttachmentPart(
       `Attached file exceeds the ${limits.maxBytes / (1024 * 1024)}MB limit.`,
     );
   }
-  return { fileName, bytes, mime: match[1]! };
+  return { kind: "inline", fileName, bytes, mime: match[1]! };
 }
 
 /**
@@ -153,24 +187,40 @@ export interface RecallableFile {
   fileName: string;
   path: string;
   mime: string;
+  /** True when the composer uploaded this file itself (see TaskAttachment) — recall hands the path back rather than reading it. */
+  uploaded: boolean;
 }
 
 /**
- * Read recalled attachments back from the scratchpad into the `{fileName, dataUrl}` shape the
- * composer submits. Best effort: a file that disappeared meanwhile (Session deleted from
- * another tab, manual cleanup) is omitted rather than failing the whole recall — the text and
- * images still come back. The caller deletes the on-disk copies afterwards (removeAttachments);
- * reading first keeps the two steps safely ordered.
+ * Read recalled attachments back into the shape the composer stages them in. A small file
+ * comes back as the `{fileName, dataUrl}` it was submitted as; a direct-uploaded one comes
+ * back as its scratchpad `path`, because re-encoding it would rebuild exactly the base64
+ * string the upload route exists to avoid — a recalled 177MB file would blow the composer up
+ * on the way back in.
+ *
+ * Best effort: a file that disappeared meanwhile (Session deleted from another tab, manual
+ * cleanup) is omitted rather than failing the whole recall — the text and images still come
+ * back. The caller deletes the inline copies afterwards (removeAttachments over the entries
+ * it is told about); a path-backed one is the composer's again and must stay on disk.
  */
-export async function readRecalledFiles(
-  files: RecallableFile[],
-): Promise<{ fileName: string; dataUrl: string }[]> {
+export async function readRecalledFiles(files: RecallableFile[]): Promise<RecalledFile[]> {
   const read = await Promise.all(
     files.map(async (f) => {
+      if (f.uploaded) {
+        try {
+          const { size } = await fs.stat(f.path);
+          return { fileName: f.fileName, path: f.path, bytes: size } satisfies RecalledFile;
+        } catch {
+          return null;
+        }
+      }
       try {
         const bytes = await fs.readFile(f.path);
         const mime = f.mime || "application/octet-stream";
-        return { fileName: f.fileName, dataUrl: `data:${mime};base64,${bytes.toString("base64")}` };
+        return {
+          fileName: f.fileName,
+          dataUrl: `data:${mime};base64,${bytes.toString("base64")}`,
+        } satisfies RecalledFile;
       } catch {
         return null;
       }
@@ -179,12 +229,20 @@ export async function readRecalledFiles(
   return read.filter((f) => f !== null);
 }
 
+/** One file attachment in a recalled message: base64 for an inline one, a scratchpad path for a direct-uploaded one (the wire shape, see RecalledMessageResponse). */
+export type { RecalledFile };
+
 /**
  * Enforce the per-request caps against everything accepted so far. Called after **each** `file`
  * part rather than once at the end, so an oversized `input` stops at the part that crosses the
  * line instead of base64-decoding the whole array first. Both answer 413: the count reuses a
  * dedicated `too_many_files` code, the aggregate the `payload_too_large` the body cap already
  * uses — from the caller's side it is the same "this request is too big" outcome.
+ *
+ * Direct-uploaded parts contribute nothing to the total here: their bytes never rode this
+ * request, so their size is not known until their file is stat-ed (attachFilesToInput, which
+ * re-checks the same aggregate over every attachment's real size). The count is complete
+ * either way.
  */
 export function assertAttachmentBudget(
   attachments: TaskAttachment[],
@@ -198,7 +256,12 @@ export function assertAttachmentBudget(
     );
   }
   let total = 0;
-  for (const a of attachments) total += a.bytes.length;
+  for (const a of attachments) total += a.kind === "inline" ? a.bytes.length : 0;
+  assertTotalBytes(total, limits);
+}
+
+/** The aggregate half of the budget above, on its own so the direct-upload path can re-run it once every attachment's size is known. */
+export function assertTotalBytes(total: number, limits: AttachmentLimits): void {
   if (total > limits.totalBytes) {
     throw new HttpError(
       413,
@@ -230,26 +293,31 @@ function scratchpadName(fileName: string): string {
 }
 
 /**
- * Write one attachment into `dir` and return its absolute path. The plain sanitized name is
- * tried first (the model — and the user reading the message — sees `report.pdf`, not an opaque
- * id); "wx" makes the create exclusive, so a second upload of the same name lands next to the
- * first as `report-3f9a1c.pdf` instead of overwriting it (same convention as core's image
- * uploads).
+ * Run `take` on the first file name in `dir` that is still free: the plain sanitized name (the
+ * model — and the user reading the message — sees `report.pdf`, not an opaque id), then
+ * `report-3f9a1c.pdf` and so on. "wx" makes the create exclusive, so a second upload of the
+ * same name lands next to the first instead of overwriting it (same convention as core's image
+ * uploads), and it is O_CREAT|O_EXCL, which also refuses to follow a symlink at the final
+ * component: a link planted at `report.pdf` fails with EEXIST and the retry allocates a
+ * suffixed name instead of writing through it. The containment check for the *directory* is
+ * separate — see openScratchpadDir.
  *
- * "wx" is O_CREAT|O_EXCL, which also refuses to follow a symlink at the final component: a link
- * planted at `report.pdf` fails with EEXIST and the retry allocates a suffixed name instead of
- * writing through it. The containment check for the *directory* is separate — see openScratchpadDir.
+ * `take` owns the create itself, so the same allocation serves a buffer written in one call
+ * and a body streamed in (receiveAttachment below).
  */
-async function writeAttachment(dir: string, attachment: TaskAttachment): Promise<string> {
-  const base = scratchpadName(attachment.fileName);
+async function withAttachmentName<T>(
+  dir: string,
+  fileName: string,
+  take: (file: string) => Promise<T>,
+): Promise<T> {
+  const base = scratchpadName(fileName);
   const ext = path.extname(base);
   const stem = base.slice(0, base.length - ext.length);
   for (let attempt = 0; attempt < MAX_NAME_ATTEMPTS; attempt++) {
     const name = attempt === 0 ? base : `${stem}-${randomBytes(3).toString("hex")}${ext}`;
     const file = path.join(dir, name);
     try {
-      await fs.writeFile(file, attachment.bytes, { flag: "wx" });
-      return file;
+      return await take(file);
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
     }
@@ -257,6 +325,14 @@ async function writeAttachment(dir: string, attachment: TaskAttachment): Promise
   throw new Error(
     `failed to allocate a unique attachment file name under ${dir} after ${MAX_NAME_ATTEMPTS} attempts`,
   );
+}
+
+/** Write one inline attachment into `dir` and return its absolute path. */
+async function writeAttachment(dir: string, attachment: InlineAttachment): Promise<string> {
+  return withAttachmentName(dir, attachment.fileName, async (file) => {
+    await fs.writeFile(file, attachment.bytes, { flag: "wx" });
+    return file;
+  });
 }
 
 /**
@@ -287,23 +363,119 @@ async function openScratchpadDir(root: string, sessionId: string): Promise<strin
   return dir;
 }
 
+/** The same directory, for the upload route: it must land its bytes exactly where the parts that reference them will be resolved. */
+export const openSessionScratchpad = openScratchpadDir;
+
+/** What the direct-upload route hands back, and what a `{type:"file", path}` part then names. */
+export interface ReceivedAttachment {
+  /** The name the file actually got on disk (sanitized, collision-suffixed — not the submitted one). */
+  fileName: string;
+  path: string;
+  bytes: number;
+}
+
+/**
+ * Stream one uploaded file into the Session scratchpad — the large-file half of the composer's
+ * attachment path (`POST /api/sessions/:id/attachments`).
+ *
+ * The bytes arrive as the request body, so neither side ever holds the file whole: the browser
+ * streams the picked `File` straight from disk and this writes chunk by chunk, where the
+ * inline route would have built a base64 string, serialized it into the task body and decoded
+ * it again here. The per-file cap is measured as the bytes arrive rather than read off a
+ * `content-length` claim, and a body that crosses it takes the half-written file with it.
+ */
+export async function receiveAttachment(
+  dir: string,
+  fileName: string,
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<ReceivedAttachment> {
+  if (body === null) throw badRequest("the request body must carry the file's bytes.");
+  const { file, handle } = await withAttachmentName(dir, fileName, async (target) => ({
+    file: target,
+    handle: await fs.open(target, "wx"),
+  }));
+  let bytes = 0;
+  try {
+    const reader = body.getReader();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new HttpError(
+          413,
+          "file_too_large",
+          `Attached file exceeds the ${maxBytes / (1024 * 1024)}MB limit.`,
+        );
+      }
+      await handle.write(value);
+    }
+  } catch (err) {
+    await handle.close().catch(() => {});
+    await fs.rm(file, { force: true }).catch(() => {});
+    throw err;
+  }
+  await handle.close();
+  if (bytes === 0) {
+    await fs.rm(file, { force: true }).catch(() => {});
+    throw badRequest("the uploaded file is empty.");
+  }
+  return { fileName: path.basename(file), path: file, bytes };
+}
+
+/**
+ * Resolve a `{type:"file", path}` part against the Session's scratchpad. The path must name a
+ * regular file **directly inside** this Session's scratchpad directory — the only place the
+ * upload route writes, and the only place such a part may point. A symlink is refused (lstat,
+ * not stat): the point of the whole check is that neither a planted link nor a path from
+ * somewhere else in the data root can become an `[attached file: …]` line the model then opens.
+ *
+ * The logical path is what comes back, matching the inline writes above, so both kinds of
+ * attachment are read back and deleted by the same code.
+ */
+async function resolveUploadedFile(dir: string, raw: string, fileName: string): Promise<string> {
+  const file = path.resolve(raw);
+  let canonical: string;
+  let info: Awaited<ReturnType<typeof fs.lstat>>;
+  try {
+    canonical = await fs.realpath(file);
+    info = await fs.lstat(canonical);
+  } catch {
+    throw badRequest(`attached file "${fileName}" is no longer in the Session scratchpad.`);
+  }
+  if (!info.isFile()) throw badRequest(`attached file "${fileName}" is not a regular file.`);
+  if (path.dirname(canonical) !== (await fs.realpath(dir))) {
+    throw badRequest(`attached file "${fileName}" is outside the Session scratchpad.`);
+  }
+  return file;
+}
+
 /** Best-effort undo of a batch of writes; errors are swallowed because every caller is already on an error path (a failed cleanup must not replace the original failure). */
 export async function removeAttachments(files: string[]): Promise<void> {
   await Promise.all(files.map((f) => fs.rm(f, { force: true }).catch(() => {})));
 }
 
-/** Result of a write batch: the Prompt to run, plus the paths written so the caller can undo them if the Task never starts. */
+/** Result of a batch: the Prompt to run, the paths **this request wrote** (the caller's undo list), and every attachment as it landed (the queue's recall). */
 export interface AttachedFiles {
   input: OmniMessage[];
   written: string[];
+  files: RecallableFile[];
 }
 
 /**
- * Land every attachment in the Session scratchpad under `root` and return the Prompt with one
+ * Land every attachment on the Session scratchpad under `root` and return the Prompt with one
  * `[attached file: <path>]` line appended per file. Placement follows core's shared rule
  * (after the last user text message; attachments-only input becomes a line-only text
  * message), so a Prompt carrying both images and files still ends in a single trailing block.
  * Returns `messages` untouched when there is nothing to attach — no directory is created.
+ *
+ * Inline attachments are written here; a direct-uploaded one is only resolved and checked (the
+ * composer's upload route wrote it before this request existed). The distinction matters to
+ * the caller's undo: `written` names the files this request created, and only those may be
+ * removed when starting the Task fails — the uploaded ones are the composer's own, still held
+ * by the chip the user is about to retry.
  *
  * All-or-nothing: a failure part-way through the batch removes what it already wrote, so a 500
  * never leaves files on disk that no message refers to. The caller owns the other half of that
@@ -313,18 +485,49 @@ export interface AttachedFiles {
 export async function attachFilesToInput(
   messages: OmniMessage[],
   attachments: TaskAttachment[],
+  limits: AttachmentLimits,
   root: string,
   sessionId: string,
 ): Promise<AttachedFiles> {
-  if (attachments.length === 0) return { input: messages, written: [] };
+  if (attachments.length === 0) return { input: messages, written: [], files: [] };
   const dir = await openScratchpadDir(root, sessionId);
+  // Resolve and measure before anything is written: a request over the aggregate cap must not
+  // leave files behind, and an uploaded part's size is only knowable by looking at the file it
+  // names (which is also where its containment is checked).
+  const resolved: { attachment: TaskAttachment; path: string; bytes: number }[] = [];
+  let total = 0;
+  for (const attachment of attachments) {
+    if (attachment.kind === "uploaded") {
+      const path = await resolveUploadedFile(dir, attachment.path, attachment.fileName);
+      const { size } = await fs.stat(path);
+      resolved.push({ attachment, path, bytes: size });
+      total += size;
+    } else {
+      resolved.push({ attachment, path: "", bytes: attachment.bytes.length });
+      total += attachment.bytes.length;
+    }
+  }
+  assertTotalBytes(total, limits);
   const written: string[] = [];
+  const files: RecallableFile[] = [];
   try {
     // Sequential on purpose: the exclusive-create retry above resolves collisions against files
     // that already exist, and writing the batch one at a time keeps two same-named uploads in
     // the same message from racing each other for the plain name.
-    for (const attachment of attachments) {
-      written.push(await writeAttachment(dir, attachment));
+    for (const entry of resolved) {
+      const attachment = entry.attachment;
+      if (attachment.kind === "uploaded") {
+        files.push({
+          fileName: attachment.fileName,
+          path: entry.path,
+          mime: "",
+          uploaded: true,
+        });
+        continue;
+      }
+      const path = await writeAttachment(dir, attachment);
+      written.push(path);
+      files.push({ fileName: attachment.fileName, path, mime: attachment.mime, uploaded: false });
     }
   } catch (err) {
     await removeAttachments(written);
@@ -333,8 +536,9 @@ export async function attachFilesToInput(
   return {
     input: appendAttachmentLines(
       messages,
-      written.map((filePath) => attachedFileLine(modelVisiblePath(filePath))),
+      files.map((f) => attachedFileLine(modelVisiblePath(f.path))),
     ),
     written,
+    files,
   };
 }

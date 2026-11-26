@@ -1,21 +1,20 @@
 /**
- * Regression: a message whose bytes are still on the wire says how far it has got.
+ * Regression: a large attachment is uploaded on its own, and the card that follows it says how far
+ * it has got.
  *
- * Attachments ride the task request **inline** as base64 (see the server's attachment-limits.ts:
- * the byte caps go up to 200MB, and a file that size is a ~267MB body once base64 has inflated it).
- * The browser sent it with `fetch`, which reports nothing about an upload, so on a slow link the
- * composer simply sat disabled for as long as it took — minutes, with no word about whether
- * anything was happening at all. A 177MB file is what a user reported this with.
+ * A big file used to ride the task request **inline** as base64 (see the server's
+ * attachment-limits.ts: the byte caps go up to 200MB, and a file that size is a ~267MB body once
+ * base64 has inflated it). The browser then held the file, its base64 string and the serialized
+ * body at once — which is how a 177MB attachment killed a user's tab halfway through a send. Now a
+ * file at or over `DIRECT_UPLOAD_MIN_BYTES` goes to `POST /api/sessions/:id/attachments` as raw
+ * bytes first (the browser streams the picked `File` from disk), and the task body carries only the
+ * scratchpad path that route handed back.
  *
- * The request now goes out over XHR for the reading (api/xhr-upload.ts), and the reading is shown
- * on the package's own long-operation card — the corner progress card an Agent deletion already uses
- * (`startProgress`, driven by features/chat/message-upload-progress.ts).
- *
- * The upload is throttled over CDP, because on loopback the body lands well inside the card's 600ms
- * reveal delay and there would be nothing to observe. What is asserted is what a reader sees: the
- * card up while the body is going out, its bar advancing between readings, and it gone once the
- * message is in the conversation. Nothing is stubbed — the session, the composer, the request and
- * the card are the app's own.
+ * This spec exercises that whole chain against the real server: the bytes leave the browser through
+ * the direct route, the card following them measures the *file* (not a base64 body), the message
+ * wears the on-disk name, and the file the route wrote into the Session scratchpad is exactly the
+ * size the browser sent. The upload is throttled over CDP because on loopback the body lands inside
+ * the card's 600ms reveal delay.
  */
 import { test, expect } from "@playwright/test";
 import { provisionAndLogin } from "./auth.mjs";
@@ -25,9 +24,11 @@ const MOCK = process.env.MOCK_URL;
 const P = "password123";
 const MODEL = { provider: "custom", modelId: "claude-4-8" };
 const MB = 1024 * 1024;
-/** The attachment: 3MB of bytes, ~4MB once base64 has inflated it — over the card's 2MB threshold. */
+/** The attachment: 3MB, over the 2MB threshold, so it takes the direct route. */
 const FILE_MB = 3;
-/** What the browser may send per second while this test's request is in flight (~6s for the body). */
+/** The picked name; it sanitizes to itself, so it is also the name the file gets in the scratchpad. */
+const FILE_NAME = "session-2026-11-23-big.jsonl";
+/** What the browser may send per second while this test's upload is in flight (~4.4s for the body). */
 const UPLOAD_BYTES_PER_S = 700 * 1024;
 
 /** A Project on the mock, one running-capable Session, and the composer in view. */
@@ -50,7 +51,9 @@ async function setUp(page, userId) {
   return (await created.json()).session.sessionId;
 }
 
-test("a big attachment reports its upload while it is going out", async ({ page }) => {
+test("a big attachment is uploaded on its own and lands in the scratchpad whole", async ({
+  page,
+}) => {
   const sessionId = await setUp(page, "r_upload_progress");
   await page.goto(`/chat/${sessionId}`);
   await expect(page.locator("textarea")).toBeVisible();
@@ -64,9 +67,15 @@ test("a big attachment reports its upload while it is going out", async ({ page 
     uploadThroughput: UPLOAD_BYTES_PER_S,
   });
 
+  // Where the bytes actually go: the direct route, raw.
+  const uploads = [];
+  page.on("request", (req) => {
+    if (req.method() === "POST" && req.url().includes("/attachments?")) uploads.push(req);
+  });
+
   // The composer's own attachment picker: any type, no `accept`.
   await page.locator('input[type="file"]:not([accept])').setInputFiles({
-    name: "session-2026-11-23-big.jsonl",
+    name: FILE_NAME,
     mimeType: "application/octet-stream",
     buffer: Buffer.alloc(FILE_MB * MB),
   });
@@ -74,29 +83,66 @@ test("a big attachment reports its upload while it is going out", async ({ page 
   await page.getByPlaceholder(/输入消息/).fill("查看这个");
   await page.getByRole("button", { name: "发送" }).click();
 
-  const bar = page.getByRole("progressbar", { name: "正在上传消息" });
+  // The card that belongs to the file, named after it: it appears while the bytes are going out,
+  // and its total is the FILE — not a base64 body, which is the whole point of the direct route.
+  const bar = page.getByRole("progressbar", { name: `正在上传 ${FILE_NAME}` });
   await expect(bar).toBeVisible({ timeout: 15_000 });
-
-  // A reading, not a spinner: the bar knows how much of the body has gone out, and that number
-  // moves. The total is the body (bigger than the file, because the attachment is base64 on the
-  // wire), and the message is still on its way when the first reading is in.
   await expect
     .poll(async () => Number((await bar.getAttribute("aria-valuenow")) ?? 0))
     .toBeGreaterThan(0);
   const first = Number(await bar.getAttribute("aria-valuenow"));
   const total = Number(await bar.getAttribute("aria-valuemax"));
-  expect(total).toBeGreaterThan(FILE_MB * MB);
+  expect(total).toBe(FILE_MB * MB);
   expect(first).toBeLessThan(total);
-  // The line under the bar is the same pair of byte readings.
-  await expect(
-    page.getByText(/^\d+(\.\d+)?(B|KB|MB|GB) \/ \d+(\.\d+)?(B|KB|MB|GB)$/),
-  ).toBeVisible();
 
   await page.waitForTimeout(700);
   const second = Number(await bar.getAttribute("aria-valuenow"));
   expect(second).toBeGreaterThan(first);
 
-  // Landed: the card leaves and the message is in the conversation.
+  // Landed: the card leaves, the message is in the conversation, and its file line names the
+  // on-disk file — the user sees what actually got attached.
   await expect(bar).toHaveCount(0, { timeout: 30_000 });
   await expect(page.getByText("查看这个")).toBeVisible();
+  await expect(page.getByText(`附加文件：${FILE_NAME}`)).toBeVisible();
+
+  // The bytes went out over the direct route, under the name the composer picked.
+  expect(uploads.length).toBeGreaterThan(0);
+  expect(new URL(uploads[0].url()).searchParams.get("name")).toBe(FILE_NAME);
+
+  // …and reached the scratchpad whole: the file the route wrote is the size the browser sent.
+  const stored = await page.request.get(
+    `${BASE}/api/sessions/${sessionId}/scratchpad/${encodeURIComponent(FILE_NAME)}`,
+  );
+  expect(stored.status()).toBe(200);
+  expect((await stored.body()).length).toBe(FILE_MB * MB);
+});
+
+test("a small attachment still rides the request and shows up the same way", async ({ page }) => {
+  const sessionId = await setUp(page, "r_upload_inline");
+  await page.goto(`/chat/${sessionId}`);
+  await expect(page.locator("textarea")).toBeVisible();
+
+  const uploads = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/attachments?")) uploads.push(req);
+  });
+
+  await page.locator('input[type="file"]:not([accept])').setInputFiles({
+    name: "notes.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.alloc(MB),
+  });
+  await expect(page.getByRole("button", { name: /^移除文件/ })).toBeVisible();
+  await page.getByPlaceholder(/输入消息/).fill("小文件");
+  await page.getByRole("button", { name: "发送" }).click();
+
+  // Same user-visible outcome as the large one — the split is about how the bytes travel, not
+  // about what the message looks like.
+  await expect(page.getByText("小文件")).toBeVisible();
+  await expect(page.getByText("附加文件：notes.txt")).toBeVisible();
+  // A file under the threshold never takes the direct route.
+  expect(uploads).toHaveLength(0);
+  const stored = await page.request.get(`${BASE}/api/sessions/${sessionId}/scratchpad/notes.txt`);
+  expect(stored.status()).toBe(200);
+  expect((await stored.body()).length).toBe(MB);
 });

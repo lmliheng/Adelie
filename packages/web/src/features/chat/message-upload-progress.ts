@@ -16,7 +16,12 @@
  * a failed one closes it too, because the composer says why above the very input card that retries
  * the send.
  */
-import type { SteerRequest, TaskCreateRequest, TaskInputPart } from "@adelie/server/api";
+import type {
+  SteerFileAttachment,
+  SteerRequest,
+  TaskCreateRequest,
+  TaskInputPart,
+} from "@adelie/server/api";
 import { startProgress } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { formatBytes } from "../../lib/format";
@@ -49,7 +54,9 @@ export function inputBytes(input: readonly TaskInputPart[]): number {
         total += part.videoUrl.length;
         break;
       case "file":
-        total += part.dataUrl.length;
+        // A `path`-shaped part carries no base64 at all (the file was uploaded separately), so it
+        // contributes nothing to the body being measured.
+        total += part.dataUrl?.length ?? 0;
         break;
     }
   }
@@ -61,7 +68,7 @@ export function steerBytes(body: SteerRequest): number {
   let total = body.text.length;
   for (const url of body.images ?? []) total += url.length;
   for (const url of body.videos ?? []) total += url.length;
-  for (const file of body.files ?? []) total += file.dataUrl.length;
+  for (const file of body.files ?? []) total += file.dataUrl?.length ?? 0;
   return total;
 }
 
@@ -111,5 +118,121 @@ export function postTaskWithUploadProgress(
 export function postSteerWithUploadProgress(sessionId: string, body: SteerRequest): Promise<void> {
   return withUploadProgress(steerBytes(body), (onUploadProgress) =>
     api.postSteer(sessionId, body, onUploadProgress),
+  );
+}
+
+/**
+ * One file attachment staged in the composer, before anything has been sent.
+ *
+ * The three shapes differ only in *where the bytes are*, and that is exactly what decides how the
+ * file reaches the model's scratchpad:
+ *
+ * - `inline` — read into a base64 `data:` URL and sent inside the task/steer body, precisely as
+ *   attachments have always travelled. The small-file path.
+ * - `direct` — held as the picked `File` itself, to be uploaded on its own (`POST …/attachments`)
+ *   when the send reaches a Session. The large-file path: a 177MB attachment as base64 is a ~236MB
+ *   request body, and building one is what kills the tab (see lib/upload-limits
+ *   DIRECT_UPLOAD_MIN_BYTES).
+ * - `uploaded` — already on the Session scratchpad, so it carries a `path` instead of a `File`.
+ *   This is what a recall of a `direct` attachment hands back (the server leaves the file in place
+ *   rather than re-encoding it — see the server's readRecalledFiles), and it needs no upload.
+ */
+export interface InlineComposerFile {
+  kind: "inline";
+  name: string;
+  size: number;
+  dataUrl: string;
+}
+
+export interface DirectComposerFile {
+  kind: "direct";
+  name: string;
+  size: number;
+  file: File;
+}
+
+export interface UploadedComposerFile {
+  kind: "uploaded";
+  name: string;
+  size: number;
+  path: string;
+}
+
+export type ComposerFile = InlineComposerFile | DirectComposerFile | UploadedComposerFile;
+
+/** A {@link ComposerFile} whose bytes are known to be within the Session scratchpad (or in hand as base64) — every `direct` one uploaded on the way here. */
+export type ResolvedComposerFile = InlineComposerFile | UploadedComposerFile;
+
+/**
+ * Get a draft's file attachments into the Session's scratchpad and report where each one landed.
+ * The `direct` ones are the whole job: each goes out over its own request — raw bytes, following a
+ * card of its own — and comes back as an `uploaded` entry naming the path it got. `inline` and
+ * already-`uploaded` entries pass through untouched.
+ *
+ * Sequential rather than in parallel: the cards then read one at a time instead of a stack of
+ * identical ones, and the files keep the order they were picked in, which is the order their
+ * `[attached file: …]` lines will appear in. A failure stops the batch and propagates — the caller
+ * is a send that then fails too, keeping the draft (the `File` is still in the chip, so a retry
+ * simply re-uploads). The card is closed either way, because the composer's refusal line is what
+ * explains a failure, not the card.
+ */
+export async function resolveComposerFiles(
+  sessionId: string,
+  files: readonly ComposerFile[],
+): Promise<ResolvedComposerFile[]> {
+  const resolved: ResolvedComposerFile[] = [];
+  for (const file of files) {
+    if (file.kind !== "direct") {
+      resolved.push(file);
+      continue;
+    }
+    const card = startProgress({ title: S.chat.uploadingAttachment(file.name) });
+    try {
+      const answer = await api.uploadSessionAttachment(
+        sessionId,
+        file.file,
+        file.name,
+        (sent, total) =>
+          card.update({
+            value: sent,
+            max: total,
+            detail: S.chat.uploadProgressDetail(formatBytes(sent), formatBytes(total)),
+          }),
+      );
+      card.close();
+      resolved.push({
+        kind: "uploaded",
+        name: answer.fileName,
+        size: answer.bytes,
+        path: answer.path,
+      });
+    } catch (err) {
+      card.close();
+      throw err;
+    }
+  }
+  return resolved;
+}
+
+/**
+ * The `{type:"file"}` parts a resolved draft contributes, in draft order. Built here rather than by
+ * each host so a task and a steer cannot disagree on the inline/`path` shape (see TaskInputPart).
+ */
+export function filePartsOf(files: readonly ResolvedComposerFile[]): TaskInputPart[] {
+  return files.map((file) =>
+    file.kind === "inline"
+      ? { type: "file", fileName: file.name, dataUrl: file.dataUrl }
+      : { type: "file", fileName: file.name, path: file.path },
+  );
+}
+
+/** The same attachments in the shape a steer request's `files` list takes (see SteerFileAttachment). */
+export function steerFileAttachmentsOf(
+  files: readonly ResolvedComposerFile[],
+): SteerFileAttachment[] {
+  return files.map((file) =>
+    file.kind === "inline"
+      ? { fileName: file.name, dataUrl: file.dataUrl }
+      : { fileName: file.name, path: file.path },
   );
 }

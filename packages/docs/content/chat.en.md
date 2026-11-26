@@ -74,7 +74,9 @@ An admin can change both sizes under [Settings › Upload limits](/settings#uplo
 
 On send, attached files are written into the Session's scratchpad, which is deleted with the Session. The conversation shows an "Attached files" notice; the file contents never enter the conversation, and the model opens each file by path with its file tools. On a model without image input, images are saved to the scratchpad the same way and passed as file paths, and a hint above the composer says so.
 
-Attachments travel with that one request's body (base64-encoded), so a big one takes a while to go out by itself. While it does, a progress card appears in the bottom-right corner with how much has been sent of how much there is, and it takes itself away as soon as the send is over; a message of a few hundred KB never raises one.
+A file's bytes travel one of two ways, decided by its size: **under 2MB** it rides this one request's body (base64-encoded), over in a single round trip; **2MB and up** it is uploaded to the Session's scratchpad on its own first (raw bytes — the browser streams the picked file straight from disk), and the request body carries only the path that upload handed back. The line exists on the browser's side: encoding a 177MB attachment into a request body makes the page hold the file, its base64 string and the serialized body at once, which is exactly how a send dies halfway through.
+
+While an upload is going out, a progress card appears in the bottom-right corner: one per large file, titled with the file's name and showing how much of it has been sent of how much there is, plus — only when the body still carries something (images, videos or small files) — one card measuring the whole request body. Each takes itself away as soon as the send is over; a message of a few hundred KB never raises one.
 
 ### Drag files onto the chat
 

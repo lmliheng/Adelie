@@ -4425,6 +4425,7 @@ export const en: Strings = {
     removeFile: "Remove file",
     /** The corner card following a message out — see the Chinese file for what the two keys say. */
     uploadingMessage: "Uploading message",
+    uploadingAttachment: (name: string): string => `Uploading ${name}`,
     uploadProgressDetail: (sent: string, total: string): string => `${sent} / ${total}`,
     attachmentTooLarge: (names: readonly string[], limitMb: number): string =>
       `${names.join(", ")} ${names.length === 1 ? "exceeds" : "exceed"} the ${limitMb}MB limit and ${names.length === 1 ? "was" : "were"} not attached.`,

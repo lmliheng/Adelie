@@ -43,6 +43,12 @@ export interface ApiFetchOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** JSON request body (auto-serialized with Content-Type: application/json). */
   body?: unknown;
+  /**
+   * A body sent as-is, for the one route that takes bytes rather than JSON (a Session's direct
+   * attachment upload): the `Blob`/`File` becomes the request body, so the browser streams it
+   * from disk instead of this layer reading it into a string. Mutually exclusive with `body`.
+   */
+  rawBody?: Blob;
   /** Query parameters (undefined values are skipped). */
   query?: Record<string, string | number | undefined>;
   /**
@@ -85,11 +91,15 @@ export interface ApiFetchMeta {
 function requestInit(options: {
   method?: string;
   body?: unknown;
+  rawBody?: Blob;
   signal?: AbortSignal;
 }): RequestInit {
   return {
     method: options.method ?? "GET",
     credentials: "same-origin",
+    ...(options.rawBody !== undefined
+      ? { headers: { "Content-Type": "application/octet-stream" }, body: options.rawBody }
+      : {}),
     ...(options.body !== undefined
       ? {
           headers: { "Content-Type": "application/json" },

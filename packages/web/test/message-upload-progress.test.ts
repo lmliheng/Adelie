@@ -16,12 +16,16 @@ import { PROGRESS_REVEAL_MS, progressStore } from "@adelie/ui";
 import { apiError, json, stubFetch } from "./helpers/fetch";
 import { FakeXhr, stubXhr } from "./helpers/xhr";
 import {
+  filePartsOf,
   inputBytes,
   postSteerWithUploadProgress,
   postTaskWithUploadProgress,
+  resolveComposerFiles,
   steerBytes,
+  steerFileAttachmentsOf,
   UPLOAD_PROGRESS_MIN_BYTES,
 } from "../src/features/chat/message-upload-progress";
+import type { ResolvedComposerFile } from "../src/features/chat/message-upload-progress";
 import { ApiError } from "../src/api/client";
 import { S } from "../src/lib/strings";
 
@@ -62,6 +66,86 @@ describe("measuring a message's body", () => {
         files: [{ fileName: "a.bin", dataUrl: "12345678" }],
       }),
     ).toBe(2 + 4 + 6 + 8);
+  });
+
+  it("counts a direct-uploaded part as nothing, because its bytes never rode the request", () => {
+    // The file was already in the scratchpad when these bodies were built (see resolveComposerFiles);
+    // a `path` part names it and carries no base64 at all, so it must not be measured as a body.
+    expect(
+      inputBytes([{ type: "file", fileName: "big.bin", path: "/x/scratchpad/s1/big.bin" }]),
+    ).toBe(0);
+    expect(
+      steerBytes({
+        text: "hi",
+        files: [{ fileName: "big.bin", path: "/x/scratchpad/s1/big.bin" }],
+      }),
+    ).toBe(2);
+  });
+});
+
+describe("resolving a draft's files", () => {
+  it("uploads each large file on its own and passes the rest through untouched", async () => {
+    stubFetch();
+    stubXhr();
+    const file = new File([new Uint8Array(16)], "big.bin", { type: "application/octet-stream" });
+    const running = resolveComposerFiles("s1", [
+      { kind: "inline", name: "small.txt", size: 3, dataUrl: "data:text/plain;base64,AAAA" },
+      { kind: "direct", name: "big.bin", size: 16, file },
+    ]);
+    const xhr = FakeXhr.last();
+    expect(xhr.method).toBe("POST");
+    expect(xhr.url).toBe("/api/sessions/s1/attachments?name=big.bin");
+    // The File itself is the body — never read into a string on the way out.
+    expect(xhr.body).toBe(file);
+    xhr.respond(
+      201,
+      JSON.stringify({ fileName: "big.bin", path: "/x/scratchpad/s1/big.bin", bytes: 16 }),
+    );
+    await expect(running).resolves.toEqual([
+      { kind: "inline", name: "small.txt", size: 3, dataUrl: "data:text/plain;base64,AAAA" },
+      { kind: "uploaded", name: "big.bin", size: 16, path: "/x/scratchpad/s1/big.bin" },
+    ]);
+  });
+
+  it("does nothing at all when no file has to be uploaded", async () => {
+    stubXhr();
+    const already: ResolvedComposerFile[] = [
+      { kind: "uploaded", name: "x", size: 1, path: "/p/x" },
+    ];
+    await expect(resolveComposerFiles("s1", already)).resolves.toEqual(already);
+    expect(FakeXhr.instances).toHaveLength(0);
+  });
+
+  it("closes the card and lets a refusal through when an upload fails", async () => {
+    stubFetch();
+    stubXhr();
+    const file = new File([new Uint8Array(16)], "big.bin");
+    const running = resolveComposerFiles("s1", [
+      { kind: "direct", name: "big.bin", size: 16, file },
+    ]);
+    FakeXhr.last().respond(
+      413,
+      JSON.stringify({ error: { code: "file_too_large", message: "too big" } }),
+    );
+    await expect(running).rejects.toMatchObject({ status: 413, code: "file_too_large" });
+  });
+});
+
+describe("the parts a resolved draft contributes", () => {
+  it("names an inline file by its data URL and a direct-uploaded one by its path", () => {
+    const resolved: ResolvedComposerFile[] = [
+      { kind: "inline", name: "small.txt", size: 3, dataUrl: "data:text/plain;base64,AAAA" },
+      { kind: "uploaded", name: "big.bin", size: 9, path: "/x/scratchpad/s1/big.bin" },
+    ];
+    expect(filePartsOf(resolved)).toEqual([
+      { type: "file", fileName: "small.txt", dataUrl: "data:text/plain;base64,AAAA" },
+      { type: "file", fileName: "big.bin", path: "/x/scratchpad/s1/big.bin" },
+    ]);
+    // The steer body's `files` list is the same two shapes under its own key names.
+    expect(steerFileAttachmentsOf(resolved)).toEqual([
+      { fileName: "small.txt", dataUrl: "data:text/plain;base64,AAAA" },
+      { fileName: "big.bin", path: "/x/scratchpad/s1/big.bin" },
+    ]);
   });
 });
 

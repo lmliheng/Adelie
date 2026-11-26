@@ -4539,6 +4539,12 @@ export const zh = {
      * reader can see shrinking.
      */
     uploadingMessage: "正在上传消息",
+    /**
+     * The corner card that follows one large attachment's own upload (see
+     * features/chat/message-upload-progress.ts, resolveComposerFiles): the file is big enough that
+     * it does not ride the message, so its bytes get a card of their own, named after the file.
+     */
+    uploadingAttachment: (name: string): string => `正在上传 ${name}`,
     uploadProgressDetail: (sent: string, total: string): string => `${sent} / ${total}`,
     /**
      * The composer's refusal line for files it turned away before reading them, one sentence per

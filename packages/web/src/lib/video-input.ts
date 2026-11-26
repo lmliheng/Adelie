@@ -95,24 +95,27 @@ export function videoFromUrl(url: string): ComposerVideo {
 }
 
 /**
- * Appends a draft's media to a task input — images first (in pick order), then videos, then files.
- * One place, because every send path submits the same draft: the normal send, the follow-up queue,
- * the @ handoff and the `/model` switch. The order is the chip row's, top to bottom, so a message
- * reads the way the composer did.
+ * Appends a draft's *inline* media to a task input — images first (in pick order), then videos. One
+ * place, because every send path submits the same draft: the normal send, the follow-up queue, the @
+ * handoff and the `/model` switch. The order is the chip row's, top to bottom, so a message reads
+ * the way the composer did.
+ *
+ * File attachments are deliberately NOT here. A file's bytes no longer all travel inside the
+ * request — one large enough is uploaded on its own first (see features/chat/message-upload-progress
+ * `resolveComposerFiles`), so its `{type:"file"}` part can only be built once that upload has a
+ * scratchpad path to name. The host, which knows the Session id the upload is scoped to, appends
+ * those parts after this call; keeping files out of here is what stops the two orderings from
+ * disagreeing.
  */
 export function appendMediaParts(
   input: TaskInputPart[],
   images: readonly string[],
   videos: readonly ComposerVideo[],
-  files: readonly { name: string; dataUrl: string }[],
 ): void {
   for (const url of images) input.push({ type: "image_url", imageUrl: url });
   for (const video of videos) {
     // `fileName` only decides what the clip is called where it lands; the server sanitizes it.
     input.push({ type: "video_url", videoUrl: video.dataUrl, fileName: video.name });
-  }
-  for (const file of files) {
-    input.push({ type: "file", fileName: file.name, dataUrl: file.dataUrl });
   }
 }
 

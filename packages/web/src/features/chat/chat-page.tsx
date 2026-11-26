@@ -114,7 +114,14 @@ import type { SendRefusal } from "./message-send-refusal";
 import { sendRefusalReason } from "./first-send-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
-import { postSteerWithUploadProgress, postTaskWithUploadProgress } from "./message-upload-progress";
+import {
+  filePartsOf,
+  postSteerWithUploadProgress,
+  postTaskWithUploadProgress,
+  resolveComposerFiles,
+  steerFileAttachmentsOf,
+} from "./message-upload-progress";
+import type { ComposerFile } from "./message-upload-progress";
 import { SEEDREAM_SKILL, replyImageActionBuilder } from "../../lib/image-actions";
 import { onPluginConfigSaved } from "../../lib/plugin-config-event";
 import { approvalModeChoices } from "./approval-mode";
@@ -1363,15 +1370,22 @@ export function ChatPage() {
   }, [stream.taskState]);
 
   const onSend = useCallback(
-    async (input: TaskInputPart[], goal: { budget: number } | null): Promise<boolean> => {
+    async (
+      input: TaskInputPart[],
+      goal: { budget: number } | null,
+      files: ComposerFile[],
+    ): Promise<boolean> => {
       if (!selected) return false;
       const sessionId = selected.sessionId;
       setSendRefusal(null); // The new attempt answers for itself; the old sentence goes.
       try {
+        // The draft's large attachments go to this Session's scratchpad first; each answers with a
+        // path, and their `file` parts join the input behind the text and media (see ComposerFile).
+        const resolved = await resolveComposerFiles(sessionId, files);
         // No thinking level rides a task: the level belongs to the model context (pinned on
         // the Session through PATCH, see applyTurnThinkingLevel).
         const res = await postTaskWithUploadProgress(sessionId, {
-          input,
+          input: [...input, ...filePartsOf(resolved)],
           ...(goal ? { goal } : {}),
         });
         discardSessionDraft();
@@ -1406,7 +1420,7 @@ export function ChatPage() {
   // when it needs the context. Returns false on failure, keeping the draft so it can be
   // resent (the empty session that never got its first message is deleted, like handoff).
   const onSwitchModel = useCallback(
-    async (ref: ModelRefDto, input: TaskInputPart[]): Promise<boolean> => {
+    async (ref: ModelRefDto, input: TaskInputPart[], files: ComposerFile[]): Promise<boolean> => {
       if (!projectId || !selected) return false;
       const sessionId = selected.sessionId;
       // The attempt that is starting answers for itself: the sentence of the one before goes.
@@ -1449,7 +1463,10 @@ export function ChatPage() {
             ref,
           );
           if (deskId !== null) {
-            const res = await postTaskWithUploadProgress(deskId, { input: [origin, ...input] });
+            const resolved = await resolveComposerFiles(deskId, files);
+            const res = await postTaskWithUploadProgress(deskId, {
+              input: [origin, ...input, ...filePartsOf(resolved)],
+            });
             discardSessionDraft();
             void company.reloadOrgChart();
             void company.reloadOrgSessions();
@@ -1486,7 +1503,10 @@ export function ChatPage() {
           machineForSession(selected.sessionId),
         );
         createdId = created.session.sessionId;
-        const res = await postTaskWithUploadProgress(createdId, { input: [origin, ...input] });
+        const resolved = await resolveComposerFiles(createdId, files);
+        const res = await postTaskWithUploadProgress(createdId, {
+          input: [origin, ...input, ...filePartsOf(resolved)],
+        });
         addSession(created.session);
         // The remainder text has been carried into the new chat: discard the source session's input draft along with it.
         discardSessionDraft();
@@ -1511,7 +1531,11 @@ export function ChatPage() {
   // chat once sent.
   // Returns false on failure, keeping the draft so it can be resent (deletes the empty Session that never got its first message sent).
   const onHandoff = useCallback(
-    async (target: AgentSummary, input: TaskInputPart[]): Promise<boolean> => {
+    async (
+      target: AgentSummary,
+      input: TaskInputPart[],
+      files: ComposerFile[],
+    ): Promise<boolean> => {
       if (!projectId || !currentAgent || !selected) return false;
       const origin: TaskInputPart = {
         type: "text",
@@ -1533,7 +1557,10 @@ export function ChatPage() {
           sandbox: selected.sandbox,
         });
         createdId = created.session.sessionId;
-        const res = await postTaskWithUploadProgress(createdId, { input: [origin, ...input] });
+        const resolved = await resolveComposerFiles(createdId, files);
+        const res = await postTaskWithUploadProgress(createdId, {
+          input: [origin, ...input, ...filePartsOf(resolved)],
+        });
         addSession(created.session);
         // The text body has been handed off into the new chat: discard the current session's input draft along with it.
         discardSessionDraft();
@@ -1579,12 +1606,16 @@ export function ChatPage() {
   // one picked when the follow-up was composed, and the server keeps it with the queued
   // input and applies it at auto-start (see TaskCreateRequest.queueIfBusy).
   const onQueueFollowUp = useCallback(
-    async (input: TaskInputPart[]): Promise<boolean> => {
+    async (input: TaskInputPart[], files: ComposerFile[]): Promise<boolean> => {
       if (!selected) return false;
       const sessionId = selected.sessionId;
       setSendRefusal(null);
       try {
-        const res = await postTaskWithUploadProgress(sessionId, { input, queueIfBusy: true });
+        const resolved = await resolveComposerFiles(sessionId, files);
+        const res = await postTaskWithUploadProgress(sessionId, {
+          input: [...input, ...filePartsOf(resolved)],
+          queueIfBusy: true,
+        });
         discardSessionDraft();
         await syncHealedSessionId(sessionId, res.sessionId);
         return true;
@@ -1625,7 +1656,7 @@ export function ChatPage() {
       text: string,
       images: string[] = [],
       videos: ComposerVideo[] = [],
-      files: { fileName: string; dataUrl: string }[] = [],
+      files: ComposerFile[] = [],
     ): Promise<"queued" | "not_running" | "failed"> => {
       if (!selected) return "failed";
       const sessionId = selected.sessionId;
@@ -1636,11 +1667,16 @@ export function ChatPage() {
         // is the only shape the server accepts there — it refuses an inline video rather than
         // handing a provider a request it would reject. The choice itself is steerVideoFields'.
         const clip = steerVideoFields(videos, video);
+        // Same as a task's: a large attachment is uploaded to this Session first, then named by path
+        // in the steer body (see ComposerFile).
+        const steerFiles = steerFileAttachmentsOf(await resolveComposerFiles(sessionId, files));
         await postSteerWithUploadProgress(sessionId, {
           text,
           ...(images.length > 0 ? { images } : {}),
           ...(clip.videos ? { videos: clip.videos } : {}),
-          ...((clip.files ?? files.length > 0) ? { files: [...(clip.files ?? []), ...files] } : {}),
+          ...((clip.files ?? steerFiles.length > 0)
+            ? { files: [...(clip.files ?? []), ...steerFiles] }
+            : {}),
         });
         discardSessionDraft();
         return "queued";

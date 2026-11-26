@@ -729,8 +729,8 @@ describe("session-manager", () => {
       images: ["data:image/png;base64,aa"],
       videos: [],
       files: [
-        { fileName: "a.txt", path: "/tmp/a.txt", mime: "text/plain" },
-        { fileName: "b.txt", path: "/tmp/b.txt", mime: "text/plain" },
+        { fileName: "a.txt", path: "/tmp/a.txt", mime: "text/plain", uploaded: false },
+        { fileName: "b.txt", path: "/tmp/b.txt", mime: "text/plain", uploaded: false },
       ],
     });
     expect(manager.pendingSteeringOf("session-1")).toEqual([

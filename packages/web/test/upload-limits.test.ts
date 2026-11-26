@@ -9,7 +9,12 @@
  * completed upload that dies on a generic error.
  */
 import { describe, expect, it } from "vitest";
-import { MB_BYTES, splitBySize } from "../src/lib/upload-limits";
+import {
+  DIRECT_UPLOAD_MIN_BYTES,
+  MB_BYTES,
+  splitBySize,
+  splitByTransport,
+} from "../src/lib/upload-limits";
 
 const file = (name: string, size: number) => ({ name, size });
 
@@ -48,5 +53,34 @@ describe("composer upload size check", () => {
 
   it("an empty batch splits into two empty sides", () => {
     expect(splitBySize([], 10)).toEqual({ accepted: [], rejected: [] });
+  });
+});
+
+describe("composer upload transport split", () => {
+  it("draws the line at the threshold: a file of exactly it rides direct, one byte less inline", () => {
+    // `>=` is the direct route's start (unlike the size cap's `>`), and the boundary is the one
+    // value that must not flip: a file of exactly the threshold makes the same ~2.7MB body as any
+    // other inline one, so it is the direct route that takes it.
+    const exact = file("exact.bin", DIRECT_UPLOAD_MIN_BYTES);
+    const under = file("under.bin", DIRECT_UPLOAD_MIN_BYTES - 1);
+    const { inline, direct } = splitByTransport([exact, under]);
+    expect(direct).toEqual([exact]);
+    expect(inline).toEqual([under]);
+  });
+
+  it("keeps the picked order on both sides", () => {
+    // The order decides the chip order and therefore the `[attached file: …]` lines, so neither
+    // side may be reordered by the split.
+    const small1 = file("a.txt", 1);
+    const big = file("big.bin", DIRECT_UPLOAD_MIN_BYTES);
+    const small2 = file("b.txt", 2);
+    const big2 = file("big2.bin", 99 * MB_BYTES);
+    const { inline, direct } = splitByTransport([small1, big, small2, big2]);
+    expect(inline.map((f) => f.name)).toEqual(["a.txt", "b.txt"]);
+    expect(direct.map((f) => f.name)).toEqual(["big.bin", "big2.bin"]);
+  });
+
+  it("an empty batch splits into two empty sides", () => {
+    expect(splitByTransport([])).toEqual({ inline: [], direct: [] });
   });
 });

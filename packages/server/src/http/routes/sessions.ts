@@ -24,6 +24,7 @@ import {
 import type { OmniMessage, SwitchFailurePolicy } from "@adelie/core";
 import type {
   ApprovalMode,
+  AttachmentUploadResponse,
   FilesStatResponse,
   GoalResponse,
   GoalStateView,
@@ -123,11 +124,13 @@ export interface SessionsRouteDeps {
 import {
   assertAttachmentBudget,
   attachFilesToInput,
+  openSessionScratchpad,
   parseAttachmentPart,
   readRecalledFiles,
+  receiveAttachment,
   removeAttachments,
 } from "../../services/task-attachments.js";
-import type { TaskAttachment } from "../../services/task-attachments.js";
+import type { RecallableFile, TaskAttachment } from "../../services/task-attachments.js";
 import {
   INLINE_IMAGE_MAX_BYTES,
   INLINE_IMAGE_MAX_MB,
@@ -437,7 +440,7 @@ function videoFileName(given: unknown, mime: string): string {
  */
 function videoAttachment(url: string, given: unknown, field: string): TaskAttachment {
   const { bytes, mime } = decodeVideoDataUrl(url, field);
-  return { fileName: videoFileName(given, mime), bytes, mime };
+  return { kind: "inline", fileName: videoFileName(given, mime), bytes, mime };
 }
 
 /**
@@ -594,30 +597,23 @@ function recallStore(
   text: string,
   images: string[],
   videos: string[],
-  attachments: TaskAttachment[],
-  written: string[],
+  files: RecallableFile[],
 ): RecallStore {
-  return {
-    text,
-    images,
-    videos,
-    files: written.map((p, i) => ({
-      fileName: attachments[i]!.fileName,
-      path: p,
-      mime: attachments[i]!.mime,
-    })),
-  };
+  return { text, images, videos, files };
 }
 
 /**
- * Serve one recall (#287): read the withdrawn message's file attachments back into data URLs,
- * delete their scratchpad copies (nothing references them anymore — leaving them would strand
- * a second copy when the user resends), and hand the composer-shaped content back. Inline
- * images and videos need no round trip: the store already holds them as submitted.
+ * Serve one recall (#287): read the withdrawn message's file attachments back in the shape the
+ * composer stages them (base64 for a small one, its scratchpad path for a direct-uploaded one
+ * — see readRecalledFiles), drop the inline copies on disk (nothing references them anymore —
+ * leaving them would strand a second copy when the user resends), and hand the composer-shaped
+ * content back. A direct-uploaded file is deliberately left alone: it still *is* the chip the
+ * composer is getting back. Inline images and videos need no round trip: the store already
+ * holds them as submitted.
  */
 async function recalledResponse(recall: RecallStore): Promise<RecalledMessageResponse> {
   const files = await readRecalledFiles(recall.files);
-  await removeAttachments(recall.files.map((f) => f.path));
+  await removeAttachments(recall.files.filter((f) => !f.uploaded).map((f) => f.path));
   return { text: recall.text, images: recall.images, videos: recall.videos, files };
 }
 
@@ -1225,6 +1221,39 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     return c.body(null, 204);
   });
 
+  // Direct file upload for the composer's large attachments: the bytes come as the raw request
+  // body (application/octet-stream — NOT base64 in JSON), stream straight into this Session's
+  // scratchpad, and the path handed back is what the follow-up task's `{type:"file", path}`
+  // part names (see TaskInputPart). This is the whole reason the route exists: a file big
+  // enough to matter cannot ride a task body as base64 without the browser holding the file,
+  // its base64 and the serialized body at once — a 177MB attachment is a 236MB request, and
+  // that is what dies in the tab (see services/task-attachments.ts, receiveAttachment).
+  //
+  // The name is the query's (the file itself carries none); it is validated like a part's
+  // fileName and then sanitized on the way to disk by the same code that names an inline one.
+  // The per-file cap is measured as the bytes arrive, never read off a `content-length` claim.
+  app.post("/:sessionId/attachments", async (c) => {
+    const row = resolveSession(c);
+    const name = c.req.query("name") ?? "";
+    if (
+      name.length === 0 ||
+      name.length > 512 ||
+      name.includes("/") ||
+      name.includes("\\") ||
+      name.includes("..") ||
+      name.includes("\0")
+    ) {
+      throw badRequest('name must be a non-empty file name without path separators or "..".');
+    }
+    const limits = toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb());
+    const dir = await openSessionScratchpad(
+      scratchpadDir(deps.config.root, row.projectId, row.agentId),
+      row.sessionId,
+    );
+    const received = await receiveAttachment(dir, name, c.req.raw.body, limits.maxBytes);
+    return c.json(received satisfies AttachmentUploadResponse, 201);
+  });
+
   // Session scratchpad files (input images saved to disk for image-unsupported models, the
   // composer's file attachments, model-generated temp files): read by filename, so the
   // conversation UI can render a message's "[attached image: <path>]" attachment line back
@@ -1521,9 +1550,10 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     // the queue is drained by this same Session. A Trace-less Session that self-heals into a
     // new id below keeps its files under the id they were written with — the paths in the
     // message stay valid; only the delete-with-the-Session cleanup misses them in that case.
-    const { input, written } = await attachFilesToInput(
+    const { input, written, files } = await attachFilesToInput(
       parsed.messages,
       parsed.attachments,
+      limits,
       scratchpadDir(deps.config.root, row.projectId, row.agentId),
       row.sessionId,
     );
@@ -1533,13 +1563,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
         queueIfBusy,
         // Original content, kept while the input waits in the follow-up queue so a recall
         // (DELETE /follow-ups/:id) can hand it back; unused when the task starts directly.
-        recall: recallStore(
-          parsed.texts.join("\n"),
-          parsed.images,
-          parsed.videos,
-          parsed.attachments,
-          written,
-        ),
+        recall: recallStore(parsed.texts.join("\n"), parsed.images, parsed.videos, files),
       });
       return c.json({ sessionId, queued } satisfies TaskCreateResponse, 202);
     } catch (err) {
@@ -1559,15 +1583,13 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
   app.post("/:sessionId/steer", async (c) => {
     const row = resolveSession(c);
     const body = await readJson(c);
+    const limits = toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb());
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const images = parseSteerImages(body);
     // Inline video only where the model takes it: a mid-run message has no model picker of
     // its own, so the same answer the Session (and its composer) was built with decides.
     const videos = parseSteerVideos(body, await sessionTakesVideo(deps, row));
-    const files = parseSteerFiles(
-      body,
-      toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb()),
-    );
+    const files = parseSteerFiles(body, limits);
     // Any part can carry the message on its own: an image or a file with no caption is a
     // complete steering message, and so is plain text.
     if (!text && images.length === 0 && videos.length === 0 && files.length === 0) {
@@ -1578,18 +1600,23 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     // message each — the same input a normal task would carry. File attachments land in the
     // Session scratchpad exactly as a task's do and ride as `[attached file: <path>]` lines
     // on the steering text (a files-only input becomes a line-only text message).
-    const { input, written } = await attachFilesToInput(
+    const {
+      input,
+      written,
+      files: recalled,
+    } = await attachFilesToInput(
       [
         ...(text ? [userText(text)] : []),
         ...images.map((url) => imageUrlMessage(url)),
         ...videos.map((url) => videoUrlMessage(url)),
       ],
       files,
+      limits,
       scratchpadDir(deps.config.root, row.projectId, row.agentId),
       row.sessionId,
     );
     try {
-      deps.manager.steer(row.sessionId, input, recallStore(text, images, videos, files, written));
+      deps.manager.steer(row.sessionId, input, recallStore(text, images, videos, recalled));
     } catch (err) {
       // 409 (not running) or any other refusal: the files must not stay behind — the
       // frontend falls back to a normal task POST, which writes its own copies.
