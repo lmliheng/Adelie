@@ -7294,6 +7294,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.220 | **悬停提示里没有断点的长串在面板边缘折断，不再跑出面板**（上游 `20b9715a3` `#1893` 移植，照改动落、不是合分支；4 个文件 / +37 −2，其中源码 2 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` 的 `contentClass`：`label` 由 `""` 改成 `wrap-anywhere`、`text` 由 `wrap-break-word` 改成 `wrap-anywhere`，并在类型注释里写下这条口径；`packages/ui-gallery/src/library/boards/tooltips.tsx` 的「被截断的一行」那一组加一条 `label` 型长路径示例）＋ 1 条新用例 ＋ changelog 一对，**纯排版、无新依赖、不碰接口**）：提示按用途分三种面板，`label`（控件名）这一类此前完全没有 `overflow-wrap` —— 一条没有空格的串（文件路径、长标识符）没有可折的地方，整条文字跑出圆角面板、压在页面别处；`text` 那一类用的是 `wrap-break-word`，它在计算内在宽度时不算断点，与「面板先长到上限、再折行」的写法对不齐。三种面板现在一律 `overflow-wrap: anywhere`：面板边缘就是断点，普通单词照旧整词换行。**本地化**：无（全在 `packages/ui` 与画廊内，无跨包 import、无 scope 引用点；画廊示例的路径按本仓数据根写成 `~/.adelie`，changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，本笔不动服务契约）· `oxlint` 0 警告 0 错误（438 文件）· `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 文件 / 1119 通过**（本笔新用例 1 条） · cli **39 / 568** · server **220 文件 / 3206 通过 / 6 跳过** · web **367 文件 / 4089 通过 / 2 跳过** · 画廊 `typecheck` + **20 文件 / 141 通过** · **反证（单测）**：把 `tooltip.tsx` 退回 `HEAD`、只跑 `test/tooltip.test.ts` → **1 failed / 26 passed**（新用例：`label` 的类名里没有 `wrap-anywhere`），换回本笔 → **27 全过** · **真服务端 + 真浏览器两态**（服务端 8985，数据根 `/root/adelie-fork-data/r351`，`ADELIE_WEB_DIST` 指 `packages/web/dist`，`/usr/bin/chromium`）：先关掉首次登录那张「尚未配置模型 credential」提示框，再往页面里注入一个只带 `data-tooltip`（`label` 型）／带 `data-tooltip-content` 的长路径触发器，悬停后读 `[data-testid="tooltip"]` —— **改前**：`label` 面板 `w=256 clientWidth=254 scrollWidth=474`（**溢出 220 px**、`overflow-wrap: normal`、高 58）、`code` 384/382/382、`text` 384/382/382（`overflow-wrap: break-word`）；**改后**：`label` `w=256 clientWidth=254 scrollWidth=254`（**不溢出**、`overflow-wrap: anywhere`、高 **74**，多折的那一行收在面板里）、`code` / `text` 与改前同宽同高（这两类本来就不溢出，回归对照）；两态 console error **0**。截图 `r351/out/{before,after}-label.png` 里看得很清楚：改前那句长路径越过面板右缘压到鲸鱼图标上，改后四折全在圆角框内 · 端口只用 8985，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r351` | 见本行提交 |
 | 2026-11-26 | 7.221 | **一个 177MB 的附件不再把浏览器拖死：大文件改走独立直传，小文件照旧**（**2026-11-26 第三百五十二轮**落地，用户点单；`packages/server` —— 新路由 `POST /api/sessions/:sessionId/attachments`（原始字节直传、边收边计上限）、`services/task-attachments.ts` 的 `receiveAttachment` / `openSessionScratchpad` / `resolveUploadedFile` 与 `{type:"file"}` 的 `path` 形态、`api/types.ts` 三个类型、`runtime/messaging/bridge.ts` 与 `test/session-manager.test.ts` 跟随、新用例 9 条；`packages/web` —— 新 `lib/upload-limits.ts`（`DIRECT_UPLOAD_MIN_BYTES` 2MB / `splitByTransport`）、`features/chat/message-upload-progress.ts`（`ComposerFile` / `resolveComposerFiles` / `filePartsOf` / `steerFileAttachmentsOf`）、`api/client.ts` 的 `rawBody`、`api/xhr-upload.ts`、`api/endpoints.ts` 的 `uploadSessionAttachment`、发送/排队/换模型/交接/草稿/插话六处各多一个 `files` 参数、`lib/video-input.ts`、`lib/strings{,-en}.ts`、新单测 8 条、e2e spec 重写 2 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **接口契约未变**（`src/ifaces.json` unchanged），CSRF 未放宽；**两次 rebase 到 `7a2dc1b41`（编号让给先到的 7.215–7.220）**） | 见「第三百五十二轮」一节（六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`）；逐包 test **`EXIT=0`、0 失败**：server **220 文件 / 3215 通过 / 6 跳过**（本笔 +9）· web **367 文件 / 4097 通过 / 2 跳过**（本笔 +8）· docs **8 / 62**；`oxlint` 0 警告 0 错误 · 改动文件 `prettier --check` 干净 · `git diff --check` 干净；**整套 web e2e 全量（rebase 后重建 core/server/web 再跑）**：**429 passed，38.5 分钟，`E2E_RC=0`，零失败**；新 / 重写的 e2e 两条单跑 **2 passed**：3MB 走直传（CDP 上行限 700KB/s、卡片名 `正在上传 session-2026-11-23-big.jsonl`、`aria-valuemax == 3MB`、`POST …/attachments?name=…`、消息 `附加文件：<名>`、scratchpad `GET` 回长度 3MB）、1MB 走内联（无 `/attachments?` 请求）；相关回归单跑通过 attachment-refusal 2 / upload-refusal 2 / draft 1 / queued-recall-refusal 3 / video-input 1 / steer-reload 1 / handoff-send-refusal 2） | 见本行提交 |
 | 2026-11-27 | 7.222 | **默认提示词精修：交付物亲自核对、卡住的检查先分清原因、精修前先落一份可用候选**（上游 `ef6c8ce99` `#1880` 移植，照改动落、不是合分支；4 个文件 / +36 −6，其中源码 2 个（`packages/core/src/state/default-config.ts` 的 `DEFAULT_SYSTEM_PROMPT`：`# Success criteria` 两行重写、`# Stop rules` 与 `# Tool use` 各加一行、非交互命令那一行补上无人值守 Debian 安装 / 活过会话的服务 / 后台完成通知 / 退出状态；`packages/core/src/state/kernel-history.ts`：`KERNEL_VERSION` `2026-11-18` → `2026-11-27`、旧提示词哈希移进 superseded、新哈希写进 current、世代清单加一行）＋ changelog 一对，**不碰接口、不动已存数据、无新依赖**）：`# Success criteria` 原来只说「检查每个问题都解决了」，没说拿什么去比，字面量 / 路径 / 筛选条件 / 要求的输出差一点也会被报成「已验证」；现在写明核对用户的明确要求（指定确切内容时整份比对，转换或筛选各查一个该被改动 / 该被包含与一个该被保留 / 该被排除的用例），项目有文档的检查照跑、覆盖不到的要求或具体风险补一个针对性的检查，并且只报观察到的结果。**本地化**：全文照落，提示词本来就是英文；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1119** · cli **39 / 568** · server **220 文件 / 3215 通过 / 6 跳过** · web **367 文件 / 4097 通过 / 2 跳过**（四个包与本笔之前逐项相同 —— 本笔只动默认提示词与内核记录，没有新增用例）· **反证（单测）**：只改提示词、`kernel-history.ts` 保持 `HEAD`，跑 `test/kernel-version.test.ts` → **1 failed / 18 passed**（门禁精确点名 `prompt` 一个 tab 移动），把内核前进写回 → **19 全过** · **真值检查**：`tsx` 直接读 `defaultSystemConfig()` —— `kernel_version` 是 `2026-11-27`，五条新句（两条 Success criteria、Stop rules、Tool use、DEBIAN_FRONTEND 那句）都在 `system_prompt` 里，旧句 `Before delivering the result` 已不存在；`computeKernelTabHashes` 的 prompt 是 `72be07b0…24c5c`，其余六个 tab 与上一代逐字相同 · 没改界面，故不起浏览器；没碰桌面壳 / `legacy/main` / `/root/Adelie` / `/root/penguin-harness` / `/root/AgentCode`；不切版本号、不发 npm、不发安装包 | 见本行提交 |
+| 2026-11-27 | 7.223 | **对话页多了一个「网络」面板，每一回合发了哪些请求都看得见；顺带把工作区选择器选中行的配色修好**（**2026-11-27 第三百五十四轮**落地，用户点单 + 用户带截图报配色；`packages/web` 22 个文件 / +2462 −20：新 `api/net-log.ts`（环形 300 条、响应体每条 64 KB、默认遮罩）、`api/client.ts` / `api/sse.ts` 插桩、新 `features/network/` 五个文件、`features/settings/network-section.tsx`、`builtin-dock-panels.tsx`、`message-item.tsx` / `message-stream.tsx` 的内联行、两本词典各 +128/130 行、新单测 `test/network-panel.test.ts`（21 条）+ `settings-sections.test.ts`（+4）、新 spec `e2e/network-panel.spec.mjs`（3 条）；配色那处在 `features/chat/workspace-finder.tsx` 两处类名 —— **不碰服务端、不碰接口、无新依赖、不动已存数据**）：面板是停靠区的常驻标签（与子代理/文件/记忆/轨迹/日程并列），记录只在本页内存、刷新即清空；按回合分组、范围/类型/搜索、详情在面板内切换（概述含时间分解 / 请求 / 响应 / 事件流 / 关联），助手回复页脚加 `⚡ N 个请求 · M 次模型调用 · 耗时` 可点回该回合，设置›系统加「网络记录」一节；服务端写帧那半仍是「未采集」占位（P1）。配色：选中行原来拿 `bg-gray-200` 当填充，外置主题的调色板桥把它映到描边色，手绘涂鸦的描边 `#3f3a34` 与字 `#211f1b` 对比度约 **1.06**，整行成了深底深字；改用应用导航在用的 `bg-fg/7` + `text-fg` | 见「第三百五十四轮」一节（rebase 到 `9bee7c5f3` 之后重跑：`packages/web` `typecheck` **rc=0**；全仓 `oxlint` **0 警告 0 错误**（2719 文件）；22 个改动文件 `prettier --check` 干净；`pnpm --filter @adelie/web build` **rc=0**（入口 `index-BBuCzrjC.js`）；web 单测 **368 文件 / 4118 通过 / 2 跳过**；真服务端 + 真浏览器：网络面板 spec **3 passed**（内联行 → 面板按回合分组 → 暂停/继续；dock 选择器里的范围/类型/搜索；点一行 → 五个标签 → 事件流里「服务端写出·未采集」→ ← 返回），finder 三份 spec 回归 **6 passed**；配色用临时实例 + 涂鸦主题截图，四种组合（涂鸦/默认 × 浅/深）逐张看过，选中行的底色实测从 `#3f3a34`（描边色）变成 `#f1e5d3`（`--ui-fg` 7% 叠在 `#fff4e0` 上），字 `#1d1a16`；**整套 204 个 e2e 没重跑**，只跑了上述这几条） | `ef7064f85`…`540bf9519`（六笔面板 + 两笔用例如实按小步提交） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35714,3 +35715,62 @@ Web 端按大小分流，阈值 `DIRECT_UPLOAD_MIN_BYTES = 2MB`（`lib/upload-li
 - 代码一笔：`packages/core/src/state/default-config.ts`、`packages/core/src/state/kernel-history.ts`、
   `changelog/unreleased/2026-11-27-default-prompt-deliverable-check{,.zh}.md`；台账（条目 7.222、上表那一行、
   本节）随本文件另起一笔。
+
+## 第三百五十四轮：对话页的「网络」面板（2026-11-27，条目 7.223，用户点单）
+
+**开工自检**：`git status --short` 干净，本地 `main` = `origin/main` = `9bee7c5f3`；这棵 `/root/adelie-fork`
+同时被另一条线用（它刚把默认提示词推到 7.222）。用户点单见 `network-panel-task.md`：不做「调试模式」，
+「网络」直接做对话页 dock 的常驻标签。工作分散在后台子代理与本人手里，提交按小步落（六笔功能 + 两笔用例）。
+
+**这一轮收的**：P0 五节全部落地。
+
+1. **面板注册**：`features/chat/builtin-dock-panels.tsx` 注册 `network`（标签「网络」，排在轨迹右边）；
+   停靠 / 拖拽 / 手机上全屏都沿用现有 dock，没有改 dock 框架。
+2. **浏览器侧记录器**：`api/net-log.ts`（新，459 行）——环形 300 条、响应体每条 64 KB（超出标
+   「已截断」）、每条带会话 / 当前回合 / 请求号；`api/client.ts` 的 `apiFetchWithMeta`（`apiFetch` 复用它）、
+   `apiFetchStream` 与上传那支 XHR 各插一刀，`api/sse.ts` 的两条订阅按连接开行、数收到的帧并复用
+   `api/sse-frames.ts`；模型调用从流的 `request_begin` / `request_end` 读成该回合的子行。**没有挂全局
+   `window.fetch`**。密钥默认遮罩（头、URL 参数、JSON 字段三处按名字匹配），看原文要二次确认。
+3. **面板 UI**：工具条（记录中/已暂停、暂停/继续、清空、导出、更多菜单）、范围（本次回复 / 最近 5 回合 /
+   全部）、类型（界面 / 模型 / 流 / 上传）、搜索；列表按回合分组、失败红、重试 `×n`、慢请求标签、进行中脉冲；
+   空态与底部隐私提示按设计稿；详情在面板内切换（← 返回），五个标签，概述带时间分解，事件流有「服务端写出 /
+   浏览器收到」两行。
+4. **消息内联行**：`net-inline-row.tsx`，助手消息底部 `⚡ N 个请求 · M 次模型调用 · 耗时`，失败时标红，
+   点击把面板打开到该回合；面板菜单可关掉这行（偏好存 `localStorage`）。
+5. **设置**：`features/settings/network-section.tsx` 挂进设置 › 系统，保留条数、记录内容、脱敏说明、
+   本次记录与清空 / 导出；**没有**「启用调试模式」开关。
+
+**顺带修的配色**（用户带截图报「你自己看这个颜色」）：工作区选择器的选中行原来拿 `bg-gray-200` 当填充，
+外置主题的调色板桥把这一档映到 `--ui-line`（描边色）。手绘涂鸦浅色的描边是 `#3f3a34`，字是 `#211f1b`，
+对比度约 **1.06**，侧栏那两条选中项就是深底深字。改成应用导航在用的 `bg-fg/7` + `text-fg`（两处类名），
+并用临时实例 + 涂鸦主题在真浏览器里截了四种组合（涂鸦/默认 × 浅/深），选中行底色实测
+`#3f3a34` → `#f1e5d3`，字 `#1d1a16`。默认主题的样子与改前一致。
+
+**验证**（rebase 到 `9bee7c5f3` 后重跑，rebase 时 `chat-page.tsx` 的四处冲突按「先直传解析、再开新回合、
+最后发送」合并）：
+
+- `packages/web` `typecheck` **rc=0**；全仓 `oxlint` **0 警告 0 错误**（2719 文件）；22 个改动文件
+  `prettier --check` 干净；`pnpm --filter @adelie/web build` **rc=0**（入口 `index-BBuCzrjC.js`）。
+- web 单测 **368 文件 / 4118 通过 / 2 跳过**（网络面板新 21 条、设置节 +4）。
+- 真服务端 + 真浏览器（临时数据根、mock 模型、`workers: 1`）：`e2e/network-panel.spec.mjs` **3 passed** ——
+  发一条消息 → 内联行出现 `N 个请求 / M 次模型调用` → 点开面板「记录中」→ 暂停/继续；从 dock 选择器打开、
+  范围与类型按钮、搜索框都在；点一行进详情，五个标签齐、请求头表在、事件流里「服务端写出 · 未采集」、
+  ← 回到列表。
+- finder 三份 spec 回归 **6 passed**（配色那处只动了两个状态类名）。
+
+**没做 / 留着**：
+
+- P1 四项（服务端 `writeSSE` 抓包点、模型调用的参数/usage/TTFT 子行、HAR 导出、与轨迹互跳）都没做；
+  详情的事件流里「服务端写出」是明写「未采集」的占位。
+- **整套 204 个 e2e 没重跑**（约 40 分钟），只跑了网络面板与 finder 这几条；这一版发版门禁会在发布树上
+  重跑全部单测与构建。
+- 上一条线已修的「运行中发送方式」那种对比问题（7.214）用的是 `bg-fill-neutral`；这里侧栏底色本身就是
+  `--ui-surface-muted`，`bg-fill-neutral` 在默认主题下几乎看不出来，所以选中行用导航一致的 `bg-fg/7`。
+  **同一族还剩十来处「拿描边档当填充」的写法**（模型选择器、轨迹/事件流列表、组织切换器、频道行内代码与
+  角标），本轮没动。
+
+### 提交
+
+- `ef7064f85` 记录器 · `c0b74b9a9` 面板与内联行 · `f5ad872a2` 脱敏与单测 · `fa5c8c6e2` 配色与排版
+  · `b3fbdcb9c` 首条浏览器用例 · `41d0cf37c` 详情页用例 · `540bf9519` 选择器配色。
+- 台账与 changelog 三对（直传 / 网络面板 / 选择器配色）随本文件另起一笔。
