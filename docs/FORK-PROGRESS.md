@@ -7236,6 +7236,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 发布 | **发 v0.8.5 并换装现网**（v0.8.4 之后攒下的四笔，**全在 Web 端**：**大文件附件的上传有了进度**（用户点单，发送时右下角一张进度卡）、**文件面板的 Edit 打不开编辑器时，原因留在预览上方**、**工作区选择器的地址栏把进不去的路径留在原地**、**stop hook 派生的游离会话不再画出一条空的智能体行**；服务端源码自 v0.8.4 以来没改，这一版**没有数据库迁移**。发布提交 `18c66addc`（父 `8f1261d3e`），`main` 与带注解的标签 `v0.8.5` 都是**直推**；门禁在 `/root/rel-085` 上 **rc=0 五步全绿**（build / typecheck 六个 `Done` / lint 0 警告 0 错误 2707 文件 / format:check / tests `ALL TESTS PASS`）；三件载荷 linux-x64 111M（114,498,922）/ universal 56M（57,257,420）/ win32-x64 144M（150,570,901）+ `validate-bundles.sh` 三件全过，桌面 deb 122,593,664 / AppImage 155,545,569 / exe 162,540,372；npm **29 个包**发到 0.8.5（`PUBLISH-ALL-DONE`，0 跳过）；GitHub Release **id `458889958`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T02:58:59Z）；3003 换上 v0.8.5 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v1030`）；现网 `/root/.adelie` 整棵换成 0.8.5、旧前端先拷回、瞬时单元 `adelie-live-restart-085` 延后 900 秒重启装新前端并自核验） | 发布轮，逐项见「第三百四十四轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.5、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 18c66addc…`、前端入口 `index-DlxipY7i.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；现网核验写 `rel-085-live-restart-verify.txt`；`releases/latest` = v0.8.5 | `18c66addc`（发布） |
 | 2026-11-26 | 7.214 | **手绘涂鸦（与赛博朋克）主题下，输入框「+」菜单里「运行中发送方式」的选中按钮不再被自己的底色吃掉**（**2026-11-26 第三百四十五轮**落地，用户点单；`packages/web` 1 个文件 1 处类名 —— **不碰接口、不碰服务端、无新依赖**）：选中那枚小按钮原先用 Tailwind 调色板档 `bg-gray-200 dark:bg-gray-700` 当填充，而外置主题的调色板桥（`external-theme.ts` 的 `PALETTE_BRIDGE_*`）把 `--color-gray-200` 映到 `--ui-line`；手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），文字 `--ui-fg` 是 `#332f2a`，于是底色与字同色。改成读令牌 `bg-fill-neutral` + `text-fg`（未选中 `text-fg-muted hover:text-fg`） | 见「第三百四十五轮」一节（真服务端 + 真浏览器，四套库主题 × 明暗两种模式量选中按钮的底色/文字 WCAG 对比度：改前 手绘涂鸦浅色 **1.18**、赛博朋克浅色 **1.40** / 深色 **1.47** 字被吃掉；改后八组全部 **≥ 9.9**；`packages/web` 单测 **364 文件 / 4066 通过 / 2 跳过**、`typecheck` rc=0、`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
 | 2026-11-26 | 7.215 | **停靠面板选择器里开的终端起不来时，原因留在选择器下面，不再只活六秒**（**2026-11-26 第三百四十六轮**落地；`packages/web` 2 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 5 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/dock/dock-terminal.ts` 新增模块级 store（`subscribeTerminalCreateRefusal` / `readTerminalCreateRefusal` / `clearTerminalCreateRefusal`）与纯函数 `terminalCreateRefused(detail)`（响应体带 `error.message` 就念它，否则保留整行详情）；`createShellInDock` 失败时，若 `dockViews()` 里有一个没有标签页的视图（即选择器在屏）就把句子写进 store，否则照旧 `toastError`；`features/dock/dock-panel.tsx` 在选择器下面画那一行（`role="alert"`、`data-testid="dock-terminal-create-refusal"`、危险色、限两行、悬停看全文），有标签页取代选择器时经 `clearTerminalCreateRefusal` 收走；`lib/strings{,-en}.ts` 各加 `terminal.createRefused(reason)`。头注释那句「没有标签页就没有可挂的表面」改成两种情形 | 见「第三百四十六轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4071 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 364 / 4066） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 6 个改动文件 0 警告 0 错误、`prettier --check` 8 个文件干净、`git diff --check` 干净；新单测 **5 passed**；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「无法打开终端：Could not start a shell: posix_spawn failed (mock)」、选择器仍在、通知区 0 条、7 秒后仍在、恢复后一次成功把句子清掉）；**改前 dist 反证 1 failed**（`dock-terminal-create-refusal` 元素不存在）；`dock.spec.mjs` 回归 **10 passed**（含「failed shell create surfaces as a toast」那条，快捷键路径没变）；rebase 到 `7b58cbd66` 后重跑：六包 `typecheck` 六个 `Done`、web **365 / 4071 + 2 跳过**、新 spec **1 passed**、`dock.spec` **10 passed**；探针量到句子在选择器正下方（y=872，选择器 589–872）、console 只有既有的 `/machines` 403 与本轮故意造的 500 两条 + 本模块自己的 `console.error`、pageerror 0 条） | `41ff5451a` |
+| 2026-11-26 | 7.216 | **`input_subagent` 留在后台的续跑轮会回报完成**（上游 `992c986e0` `#1864` 移植，照改动落、不是合分支；本树落下 8 个文件（3 改源码 + 1 改用例 + 2 份文档 + changelog 一对）：`packages/core/src/environment/tools/run-subagent.ts`（导出的 `leaveSubagentUnattended` 把「完成回报 + 常驻审批出口 + 实时消息转发」收在一处，后台启动与前台转后台共用）、`input-subagent.ts`（`startedRound` 标记这次调用真正发起的一轮，窗口结束时仍在跑就交给它并告知完成会以 `[background_task_done]` 送达）、`subagent/session.ts`（注释口径改为「无人看管的会话」）、用例 +151 行、`packages/docs/content/tools.{zh,en}.md` 各一句 —— **不碰接口、不碰界面、无新依赖**；接手 07:00 那一轮被 `user_abort` 中止的半成品，整片留底 `r349/r345-halfwork.patch`）：槽位被腾走后又恢复的子会话、一直只靠轮询访问的子会话，`input_subagent` 发起的续跑轮跑完时父 Session 一声不响 —— 只有以 `run_in_background` 启动、并且一直没让出过槽位的子会话例外。现在这样的一轮与后台启动拿到的东西相同。见「第三百四十七轮」一节 | 见「第三百四十七轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **364 文件 / 4066 通过 / 2 跳过** · docs **8 / 62**；`oxlint` **0 警告 0 错误**、改动 4 个 ts 文件 `prettier --check` 干净；**反证（单测）**：3 个源码文件退回 `HEAD` → `test/background-execution.test.ts` **2 failed / 34 passed**，拷回 → **36 passed**；上游 `992c986e0` 与本树 diff 逐行对过，8 文件名单一致、差异只在基座命名与行号；本笔不改界面，未起服务 / 未开浏览器，端口与数据根一个没碰） | `46615d48b` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35071,3 +35072,59 @@ chip）、`features/traces/trace-panel.tsx` 与 `sse-frame-list.tsx`（选中的
   `packages/web/test/dock-terminal-create-refusal.test.ts`、
   `packages/web/e2e/dock-terminal-create-refusal.spec.mjs`、changelog 一对；台账（条目 7.215、上表那一行、
   本节）随本文件另起一笔。
+
+## 第三百四十七轮：`input_subagent` 留在后台的续跑轮会回报完成（2026-11-26，条目 7.216）
+
+**开工**：`git status --short` 不干净 —— 7 个在途文件（5 改 2 新）停在 staged / unstaged 混合态，
+mtime 全在 07:08–07:09；`HEAD` 是 10:27 的发版那笔，之后 11:17 / 11:21 / 11:27 另有别人的三笔，
+都不含这些文件。按第十一种形态的判据走了一遍：`traces/2026-11-26/session-2026-11-26-07-00-17-e2d33b18_001.jsonl`
+末尾是 `abort / user_abort`（用户在 07:18 按了停止，不是崩溃）；11:00 那一轮已经看到它、按「脏树别硬上」
+停过一次并发邮件给出「接手 vs 丢弃」二选一（收件箱里那封 11:02 的信在，**没有答复**）；11:27 之后这棵树
+再没被写过（`ps` / `/proc/*/cwd` 里没有进程落在这里）。
+
+**本轮的选择是接手把它做完**，理由三条：① 这份改动是上游 `992c986e0`（`#1864`）的移植，不是发明新功能，
+进的正是主线要跟的东西；② 那一轮的 trace 里已经逐条验完（反证成立、六包 typecheck、五包测试、lint 与
+prettier 全绿），只差提交与台账；③ 用户这轮的任务书写明「自己做**完**一件事」，而同一份半成品从 07:09
+躺到 15:00 已经让 11:00 那一轮空转了一次。先把 `git diff HEAD` 整片留底到 scratchpad
+（`r349/r345-halfwork.patch`，410 行，sha256 前 24 位 `d4d429c698fc94e331c9d3ff`），要退这一笔
+`git revert 46615d48b` 即可。
+
+**做了什么**（上游 8 文件 / +255 −24 → 本树 8 文件 / +251 −26，`packages/core` 3 改、用例 +151 行、
+`packages/docs` 两份各一句、changelog 一对）：
+
+- `run-subagent.ts`：新增导出的 `leaveSubagentUnattended(session, subagentId, prompt, services, approve)` ——
+  「完成回报 + 常驻审批出口（没有它子会话的下一个读写工具会永远停在审批队列）+ 实时消息转发」三样收在一处；
+  后台启动与前台运行中途转后台两处都改成调它。重复调用安全：回报与审批出口各替换上一份（一个会话不会
+  同时持两份回报，所以一轮最多报一次），消息转发已经挂着就不再挂。
+- `input-subagent.ts`：`startedRound` 只标记**这次调用真正发起**的那一轮。窗口结束时它还在跑，就把上面
+  三样交给它、返回「完成会以 `[background_task_done]` 用户消息送达，不必轮询」；窗口内收束的轮次仍由
+  这次调用自己返回，轮询（空 prompt）、对运行中的一轮插话、`abort` 都不挂任何东西。
+- `subagent/session.ts`：settle watcher 的注释从「run_in_background 的完成回报」改成「无人看管的会话的
+  完成回报」，行为不变。
+- `tools.{zh,en}.md`：补一句「对其他子会话，`input_subagent` 发起的续跑轮如果在调用返回时仍在运行，
+  结束时同样会送达完成通知」。
+
+**移植核对**：`git show 992c986e0` 与本树 diff 逐行比过 —— 8 个文件名单一致，差异只在基座命名
+（上游 `@prismshadow/amsp/records` → 本树 `../../omnimessage/index.js`、`status` → `stopReason`）与行号，
+没有漏改。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** ·
+  cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **364 文件 / 4066 通过 / 2 跳过** ·
+  docs **8 文件 / 62 通过**（改了 `packages/docs` 的内容，按惯例多跑这一包）。测试前先
+  `pnpm -C packages/core build`（server 读 core 的 dist）。
+- `oxlint` **0 警告 0 错误**（2707 文件）；改动 4 个 ts 文件 `prettier --check` 干净。
+- **反证（单测）**：把 3 个源码文件 `git checkout HEAD --` 退回改前、用例不动 →
+  `test/background-execution.test.ts` **2 failed / 34 passed**；从留底拷回 → **36 passed**。新用例确实咬住新行为。
+- 本笔不改界面、不碰服务契约，**没有起服务、没有开浏览器**；端口一个没碰（3003 / 3004 / 4000 / 7364 / 7369
+  都没动），数据根没写，`~/.penguin` 没碰。
+- 开工时先 `git merge --ff-only origin/main` 跟上远端 4 笔（`704f7477e` → `7a6e62f4d`，都是别人的），
+  本轮两笔叠在其上。
+
+### 提交
+
+- 代码一笔 **`46615d48b`**：`packages/core/src/environment/tools/{input-subagent,run-subagent}.ts`、
+  `packages/core/src/environment/tools/subagent/session.ts`、`packages/core/test/background-execution.test.ts`、
+  `packages/docs/content/tools.{zh,en}.md`、changelog 一对；台账（条目 7.216、上表那一行、本节）随本文件另起一笔。
