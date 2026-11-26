@@ -4042,6 +4042,16 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       `KERNEL_SUPERSEDED_TAB_HASHES.prompt`，新哈希 `72be07b0…24c5c` 写进 `KERNEL_DEFAULT_TAB_HASHES.prompt`，
       世代清单加一行；只有提示词一个 tab 移动。反证：只改提示词不推内核 → `kernel-version.test.ts`
       **1 failed / 18 passed**（门禁精确点名 `prompt`），补齐哈希后 **19 全过**。见「第三百五十三轮」一节。
+- [x] **7.224 会折行的提示条，色调标记留在第一行**（上游 `08ee6d4d2` `#1897` 移植，**2026-11-27
+      第三百五十六轮**落地，提交见「已完成的轮次」；`packages/ui` 5 个源码 / 文档文件 ＋
+      `packages/ui-gallery` 3 个演示与文案文件 ＋ 用例 3 个 ＋ changelog 一对 —— **不碰接口、不动已存数据、
+      无新依赖**）：`Notice` 过去把开头那个标记在整个盒子里居中 —— 多行提示（插件源失败的展开说明、标题
+      盖着较长正文的提示块）在现代主题下圆点停在第三行旁边、极客主题下 `[WARN]` 标签停在中间某行。现在
+      开头块标 `data-slot="lead"` 且 `items-start`，`icon` 槽一行高（`min-h-[1lh]`）居中，标记随首行；
+      两份主题的 `::before` 挂到 lead 块的第一行（宿主自己的标记让位），横幅的标记落在条带内边距下的
+      第一行。**本树的主题是旧结构单文件 css**（上游已拆成 recipes 目录），按语义适配。反证：退掉
+      `packages/ui/src`、保留画廊的多行示例，同一探针实测标记中心偏离首行 **30px**（现代）/ **28px**
+      （极客）；改动后各 **1px**；单行提示两态的标记中心都在盒中心（77 / 77、71 / 71）。见「第三百五十六轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7296,6 +7306,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-27 | 7.222 | **默认提示词精修：交付物亲自核对、卡住的检查先分清原因、精修前先落一份可用候选**（上游 `ef6c8ce99` `#1880` 移植，照改动落、不是合分支；4 个文件 / +36 −6，其中源码 2 个（`packages/core/src/state/default-config.ts` 的 `DEFAULT_SYSTEM_PROMPT`：`# Success criteria` 两行重写、`# Stop rules` 与 `# Tool use` 各加一行、非交互命令那一行补上无人值守 Debian 安装 / 活过会话的服务 / 后台完成通知 / 退出状态；`packages/core/src/state/kernel-history.ts`：`KERNEL_VERSION` `2026-11-18` → `2026-11-27`、旧提示词哈希移进 superseded、新哈希写进 current、世代清单加一行）＋ changelog 一对，**不碰接口、不动已存数据、无新依赖**）：`# Success criteria` 原来只说「检查每个问题都解决了」，没说拿什么去比，字面量 / 路径 / 筛选条件 / 要求的输出差一点也会被报成「已验证」；现在写明核对用户的明确要求（指定确切内容时整份比对，转换或筛选各查一个该被改动 / 该被包含与一个该被保留 / 该被排除的用例），项目有文档的检查照跑、覆盖不到的要求或具体风险补一个针对性的检查，并且只报观察到的结果。**本地化**：全文照落，提示词本来就是英文；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1119** · cli **39 / 568** · server **220 文件 / 3215 通过 / 6 跳过** · web **367 文件 / 4097 通过 / 2 跳过**（四个包与本笔之前逐项相同 —— 本笔只动默认提示词与内核记录，没有新增用例）· **反证（单测）**：只改提示词、`kernel-history.ts` 保持 `HEAD`，跑 `test/kernel-version.test.ts` → **1 failed / 18 passed**（门禁精确点名 `prompt` 一个 tab 移动），把内核前进写回 → **19 全过** · **真值检查**：`tsx` 直接读 `defaultSystemConfig()` —— `kernel_version` 是 `2026-11-27`，五条新句（两条 Success criteria、Stop rules、Tool use、DEBIAN_FRONTEND 那句）都在 `system_prompt` 里，旧句 `Before delivering the result` 已不存在；`computeKernelTabHashes` 的 prompt 是 `72be07b0…24c5c`，其余六个 tab 与上一代逐字相同 · 没改界面，故不起浏览器；没碰桌面壳 / `legacy/main` / `/root/Adelie` / `/root/penguin-harness` / `/root/AgentCode`；不切版本号、不发 npm、不发安装包 | 见本行提交 |
 | 2026-11-27 | 7.223 | **对话页多了一个「网络」面板，每一回合发了哪些请求都看得见；顺带把工作区选择器选中行的配色修好**（**2026-11-27 第三百五十四轮**落地，用户点单 + 用户带截图报配色；`packages/web` 22 个文件 / +2462 −20：新 `api/net-log.ts`（环形 300 条、响应体每条 64 KB、默认遮罩）、`api/client.ts` / `api/sse.ts` 插桩、新 `features/network/` 五个文件、`features/settings/network-section.tsx`、`builtin-dock-panels.tsx`、`message-item.tsx` / `message-stream.tsx` 的内联行、两本词典各 +128/130 行、新单测 `test/network-panel.test.ts`（21 条）+ `settings-sections.test.ts`（+4）、新 spec `e2e/network-panel.spec.mjs`（3 条）；配色那处在 `features/chat/workspace-finder.tsx` 两处类名 —— **不碰服务端、不碰接口、无新依赖、不动已存数据**）：面板是停靠区的常驻标签（与子代理/文件/记忆/轨迹/日程并列），记录只在本页内存、刷新即清空；按回合分组、范围/类型/搜索、详情在面板内切换（概述含时间分解 / 请求 / 响应 / 事件流 / 关联），助手回复页脚加 `⚡ N 个请求 · M 次模型调用 · 耗时` 可点回该回合，设置›系统加「网络记录」一节；服务端写帧那半仍是「未采集」占位（P1）。配色：选中行原来拿 `bg-gray-200` 当填充，外置主题的调色板桥把它映到描边色，手绘涂鸦的描边 `#3f3a34` 与字 `#211f1b` 对比度约 **1.06**，整行成了深底深字；改用应用导航在用的 `bg-fg/7` + `text-fg` | 见「第三百五十四轮」一节（rebase 到 `9bee7c5f3` 之后重跑：`packages/web` `typecheck` **rc=0**；全仓 `oxlint` **0 警告 0 错误**（2719 文件）；22 个改动文件 `prettier --check` 干净；`pnpm --filter @adelie/web build` **rc=0**（入口 `index-BBuCzrjC.js`）；web 单测 **368 文件 / 4118 通过 / 2 跳过**；真服务端 + 真浏览器：网络面板 spec **3 passed**（内联行 → 面板按回合分组 → 暂停/继续；dock 选择器里的范围/类型/搜索；点一行 → 五个标签 → 事件流里「服务端写出·未采集」→ ← 返回），finder 三份 spec 回归 **6 passed**；配色用临时实例 + 涂鸦主题截图，四种组合（涂鸦/默认 × 浅/深）逐张看过，选中行的底色实测从 `#3f3a34`（描边色）变成 `#f1e5d3`（`--ui-fg` 7% 叠在 `#fff4e0` 上），字 `#1d1a16`；**整套 204 个 e2e 没重跑**，只跑了上述这几条） | `ef7064f85`…`540bf9519`（六笔面板 + 两笔用例如实按小步提交） |
 | 2026-11-27 | 发布 | **发 v0.8.6 并换装现网**（v0.8.5 之后攒下的十笔：**大附件改走独立直传**（用户点单，2MB 以上每文件一张进度卡，消息正文里只带落盘路径）、**对话页的「网络」面板**（用户点单，常驻标签、按回合分组、默认遮罩、只在本页内存）、**内置提示词推进到内核 2026-11-27**（交付物按用户的明确要求核对、卡住的检查先分清原因）、**工作区选择器选中行在涂鸦主题下的配色**（用户带截图报，对比度 1.06 → 12 上下），以及悬停提示长串折断、窄屏表格、桌宠通话失败文案、`input_subagent` 后台回报、清空数据第一步与停靠面板终端失败原因、涂鸦主题「运行中发送方式」按钮 六处小修；服务端新增一条上传路由，**没有数据库迁移**。发布提交 `bb0409bc3`（父 `95029dd6a`）+ 门禁修复 `658436797`，带注解的标签 `v0.8.6` 指 `658436797`；`main` 与标签都直推；门禁在 `/root/rel-086` 上**第二遍 rc=0 五步全绿**（第一遍 rc=1：`@adelie/ui` 的 `.ui-live` 缺 `data-live` 且不归 Dot/ProgressBar 写、`@adelie/ui-gallery` 缺直传接口的模拟，都修好后重跑）；三件载荷 114,520,461 / 57,297,876 / 150,593,459 + `validate-bundles.sh` 三件全过，桌面 deb 122,607,624 / AppImage 155,561,807 / exe 162,497,937；npm **29 个包**发到 0.8.6（`PUBLISH-ALL-DONE`，读侧 `@adelie/server` 当场仍是 0.8.5，属已知滞后）；GitHub Release **id `459986837`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T23:14:29Z）；3003 换上 v0.8.6 清单（旧清单与旧 exe 留 `.bak-20261127-v0715`）；现网 `/root/.adelie` 整棵换成 0.8.6、旧前端先拷回（`index-BCMo4EVQ.js`），新前端 `index-Bm3s3_u9.js` 由瞬时单元延后重启装进去） | 发布轮，逐项见「第三百五十五轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.6、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 658436797…`、前端入口 `index-Bm3s3_u9.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；`releases/latest` = v0.8.6 | `658436797`（发布） |
+| 2026-11-27 | 7.224 | **会折行的提示条，色调标记留在第一行**（上游 `08ee6d4d2` `#1897` 移植，照语义落、不是合分支；13 文件 / +101 −15，其中 `packages/ui` 源码 5 个（`components/feedback/notice/notice.tsx` 的开头块 `data-slot="lead"` + `items-start` 与 `icon` 槽 `min-h-[1lh]`、`notice-strip.tsx` 与 `hooks.ts` 的槽说明、`themes/modern.css` 与 `geek.css` 的 `::before` 挂到 lead 块首行）、`packages/ui-gallery` 3 个（提示板多行示例 + 中英文案 `wrappedBody`）、用例 3 个、changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：`Notice` 原来把标记在整个盒子居中，多行提示在现代主题下圆点停在第三行旁边、极客主题下 `[WARN]` 标签停在中间；现在标记随首行、横幅的落在条带内边距下，单行提示位置不变。**本地化**：本树主题是旧的单文件 css（上游已拆 recipes 目录），按语义重写那两段选择器；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与兼容性 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；`@adelie/ui-gallery` typecheck **rc=0**；`oxlint` **0 警告 0 错误**（2722 文件）；13 个改动文件 `prettier --check` 干净；`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **220 / 3215 / 6 跳过** · web **368 / 4118 / 2 跳过** · hmr 无测试文件；**真界面两态（组件画廊 7372，Playwright + 本机 chromium，数据不落仓库）**：同一探针在 `lib.html?topic=notices` 里量多行示例的标记中心与首行中心 —— 现代主题改前偏 **30px**、改后 **1px**；极客主题改前偏 **28px**、改后 **1px**；默认（github）主题改后 **1px**、圆点在第一行；单行 inline 提示两态标记中心都在盒中心（现代 77/77、极客 71/71）；两态三主题 console **0 error**；截图 `wrapped-{modern,geek,github}.png` 与 `measure-*.json` 在 scratchpad · 端口只用 7372，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `240ced3d2` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35834,3 +35845,77 @@ Web 端按大小分流，阈值 `DIRECT_UPLOAD_MIN_BYTES = 2MB`（`lib/upload-li
 - 代码十笔 + 台账一笔（`95029dd6a`）先推；发布提交 `bb0409bc3`（版本号 37 个文件 + 发布正文）；门禁修复
   `658436797`；标签 `v0.8.6` 指 `658436797`。
 - 台账一笔（本文件，条目 = 发布）。
+## 第三百五十六轮：会折行的提示条，色调标记留在第一行（2026-11-27，条目 7.224）
+
+**开工自检**：`git status --short` 干净，分支 `main`，本地 `main` 与 `origin/main` 都是 `9bee7c5f3`；
+`git fetch origin && git merge --ff-only origin/main` 快进到 **`658436797`**（另一条线发了 v0.8.6：大文件
+直传与网络面板），工作区仍干净。**收尾时远端又推了一笔**（`9facc459f`：v0.8.6 的发布台账，它记成
+「第三百五十五轮」），于是本轮 rebase 到它上面、**编号让到 7.224 / 第三百五十六轮**（条目号 7.224 没撞）；
+https 的 push 与 fetch 各失败一次（`GnuTLS recv error (-110)`），改走 `git -c http.version=HTTP/1.1 fetch`
+才拉到那一笔。
+
+**选活**：待办里第一个未勾选的仍是 2.2c，它「还差什么」的四条这一轮一条都动不了（写侧在桌面壳、部署
+单元属发布动作、桌面壳自己的开关同前、`packages/docs/**` 与 `changelog/**` 留到发布期）；3.5 要用户拍板
+取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动；第 7 节到 7.223 全勾。先把上一轮留下的四笔上游候选逐笔量
+了一遍前置，**四笔都缺本树没有的上游子系统**：`c42a54fea` 要 `machines/handshake.ts` 与 `#askBuild` /
+`#settleBuild` / `#syncConfig`（本树的 `machines/service.ts` 是另一套），`f5928243e` 要 `features/workbenches/`
+与 `agent-workbenches.tsx`（Workbench 改名后的新子系统），`c46f48ea0` 要 `lib/amsp/stream-model.ts`，
+`5b5772c59` 要 `core/src/plugin/index-document.ts`。于是照第二十三轮那条路按 URL 现拉上游 `main` 到
+`refs/adelie-tmp/upstream-main-r355`（尖端 **`08ee6d4d2`**），它之后新推五笔：`fdf56199c`（App Center 导航行）
+要本树没有的 `web-app/sidebar/`，`9857854e1`（不可达机器上的对话）要 `machines/history-sync.ts` 一整套，
+`9b5d376e2` / `376a5340a` 是上游自己的文档面与落地页（本仓不取），剩 **`08ee6d4d2`（`#1897`）** —— 本树有
+`Notice` 组件与两份主题，量下来只有一处出入：上游已把主题拆成 `themes/<name>/recipes.css` 目录，本树仍是
+`themes/<name>.css` 单文件，按语义适配即可。
+
+**为什么它是真的**：`Notice` 的头块是 `items-center`，标记跟着**整个盒子**居中。多行提示（插件源失败的
+展开说明、标题盖着较长正文的提示块）在现代主题下圆点就停在第三行旁边、极客主题下 `[WARN]` 标签停在中间
+某行 —— 截图与数值都量到了（见下）。
+
+**做了什么**（照上游落，按本树的主题结构重写那两段选择器）：
+
+- `packages/ui/src/components/feedback/notice/notice.tsx`：开头块 `data-slot="lead"` 且 `items-start`；
+  `icon` 槽 `min-h-[1lh]`（它自己的继承行高）配 `items-center` —— 标记停在第一行，单行提示看起来仍是
+  整盒居中。
+- `packages/ui/src/themes/modern.css`：点的 `::before` 同时挂在 `.ui-notice` 与 `.ui-notice [data-slot="lead"]`
+  上（后者 `inset-inline-start: calc(-1.125em)`、`top: 0.5lh`），有 lead 块时宿主自己的标记 `display: none`；
+  横幅的 `top: calc(0.375rem + 0.5lh)`。
+- `packages/ui/src/themes/geek.css`：同样的两处挂法，标签块 `inset-inline-start: calc(-4rem)`、`top: 0`、
+  `height: 1lh`；横幅 `top: 0.375rem`；四种色调的 `content` 都补上 lead 版。
+- `packages/ui/src/hooks.ts`、`notice-strip.tsx`：钩子的槽清单与条带的注释写上 `lead`。
+- `packages/ui-gallery`：提示板的 inline 变体加一条多行示例（`t.wrappedBody`，中英各一份）。
+- 用例：`notice.test.ts` 钉住 lead 块与单行 icon 槽；`hooks.test.ts` 的槽集合、`token-contract.test.ts` 的
+  mono 选择器清单跟着改。
+- 没有碰桌面壳、没有切版本号、没有发 npm / 安装包。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 /
+  647 类型）。
+- `@adelie/ui-gallery` `typecheck` **rc=0**；`oxlint` **0 警告 0 错误**（2722 文件）；13 个改动文件
+  `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119 通过** · core **70 / 1464 / 6 跳过** ·
+  cli **39 / 568** · server **220 / 3215 / 6 跳过** · web **368 / 4118 / 2 跳过** · hmr 无测试文件。
+- **真界面两态（组件画廊，Playwright + 本机 chromium）**：`/lib.html?topic=notices&lang=zh` 在同一探针下量
+  「多行示例的标记中心与首行中心之差 / 单行 inline 提示的标记中心与盒中心」——
+  **改动后**：现代 **1px**、极客 **1px**、默认（github）**1px**（图标槽也落在首行）；单行两态一致
+  （现代 77 / 77、极客 71 / 71）。**反证（真界面，改前源码）**：`git stash push -- packages/ui/src`（保留
+  画廊的多行示例作夹具）、重建后同一条探针 → 现代 **30px**、极客 **28px**，截图里圆点停在第三行旁、
+  `[WARN]` 停在中间；恢复改动再跑一次，数字与「改动后」逐项一致。两态三主题 console **0 error**。
+  截图 `r355/{after,before}/wrapped-{modern,geek,github}.png`、原始测量 `measure-*.json`、探针 `probe.mjs`
+  都在 scratchpad（数据根不落仓库）。
+- 端口只用 7372（画廊的固定端口），3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 留着
+
+- 上游余下的四笔仍按上面量下来的结论留着：它们各自缺的上游子系统（machines 握手/同步、Workbench 界面、
+  `stream-model`、插件索引文档）都不是一轮的量，落地前要先量前置。
+- 提示条「横幅标记落在条带内边距下」那两行用的是上游给的具体 `top`（0.375rem），本树的横幅调用点若
+  内边距不同会偏一点；本轮只量了画廊里的多行 inline 示例，没有为每个横幅调用点逐张截图。
+- `clear-data` 卡片的范围（上一轮留下的语义决定）仍等用户一句话。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 代码一笔：`240ced3d2`（`packages/ui` 5 个源码 / 文档文件、`packages/ui-gallery` 3 个、用例 3 个、
+  changelog 一对）；台账（条目 7.224、上表那一行、本节）随本文件另起一笔。
