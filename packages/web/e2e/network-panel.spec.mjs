@@ -1,0 +1,96 @@
+/**
+ * The conversation's "网络" panel: this page records a turn's own requests, and the line under the
+ * assistant reply opens the panel on that turn.
+ *
+ * - After one turn against the repository's mock model, the reply's inline request line is there
+ *   (this turn made HTTP requests and at least one model call).
+ * - Clicking the line opens the Network tab on the right dock, recording, with the panel's summary
+ *   in the same numbers.
+ * - The panel opens from the dock picker as well, with its scope and type controls.
+ * - Pausing stops recording — the toolbar says so and the button offers to resume.
+ */
+import { test, expect } from "@playwright/test";
+import { provisionAndLogin } from "./auth.mjs";
+
+const BASE = process.env.BASE_URL;
+const MOCK = process.env.MOCK_URL;
+const U = "networkuser";
+const P = "password123";
+/** The mock's second-turn answer (the string it says once a tool call has run). */
+const REPLY = "Command finished; the result looks as expected.";
+
+/** Provision the user, aim the Project's model at the mock, open one Session and run one turn. */
+async function openSessionWithOneTurn(page) {
+  await provisionAndLogin(page.request, U, P);
+  const projectId = (await (await page.request.get(`${BASE}/api/projects`)).json()).projects[0]
+    .projectId;
+  const put = await page.request.put(`${BASE}/api/projects/${projectId}/models`, {
+    data: {
+      defaultModel: { provider: "custom", modelId: "claude-4-8" },
+      models: [
+        {
+          provider: "custom",
+          modelId: "claude-4-8",
+          apiKey: "sk-mock",
+          baseUrl: MOCK,
+          contextWindow: 200000,
+        },
+      ],
+    },
+  });
+  expect(put.ok(), "put models").toBeTruthy();
+  const created = await page.request.post(
+    `${BASE}/api/projects/${projectId}/agents/default_agent/sessions`,
+    { data: { provider: "custom", modelId: "claude-4-8", approvalMode: "allow-all" } },
+  );
+  expect(created.ok(), "create session").toBeTruthy();
+  const sessionId = (await created.json()).session.sessionId;
+
+  await page.goto(`${BASE}/chat/${sessionId}`);
+  const composer = page.getByPlaceholder(/输入消息/);
+  await composer.waitFor();
+  await composer.fill("check the directory");
+  await page.getByRole("button", { name: "发送" }).click();
+  await expect(page.getByText(REPLY, { exact: true })).toBeVisible({ timeout: 30_000 });
+  return sessionId;
+}
+
+/** The dock that is actually on screen (a collapsed one keeps its bodies mounted at zero size). */
+const onScreenDock = (page) => page.locator('[data-testid="dock"]:visible');
+
+test("the reply's request line opens the Network panel on that turn", async ({ page }) => {
+  await openSessionWithOneTurn(page);
+
+  // The inline line: this turn made requests and at least one model call.
+  const inline = page.locator('[data-net-turn="1"]');
+  await expect(inline).toBeVisible();
+  await expect(inline).toContainText(/个请求/);
+  await expect(inline).toContainText(/次模型调用/);
+
+  // Clicking it brings the Network tab up on the right dock, recording.
+  await inline.click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+  await expect(dock.getByText(/\d+ 请求 · \d+ 模型调用/)).toBeVisible();
+
+  // Pausing stops recording; the button then offers to resume.
+  await dock.getByRole("button", { name: "暂停" }).click();
+  await expect(dock.getByText("已暂停")).toBeVisible();
+  await dock.getByRole("button", { name: "继续" }).click();
+  await expect(dock.getByText("记录中")).toBeVisible();
+});
+
+test("the Network panel opens from the dock picker with its controls", async ({ page }) => {
+  const sessionId = await openSessionWithOneTurn(page);
+
+  await page.goto(`${BASE}/chat/${sessionId}`);
+  await page.getByPlaceholder(/输入消息/).waitFor();
+  await page.getByTestId("dock-toggle-right").click();
+  await page.getByTestId("dock-pick-network").click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+  // Scope (本次回复 / 最近 5 回合 / 全部) and type filters (接口 / 模型 / 流 / 上传).
+  await expect(dock.getByRole("button", { name: "本次回复" })).toBeVisible();
+  await expect(dock.getByRole("button", { name: "模型" })).toBeVisible();
+  await expect(dock.getByRole("searchbox", { name: "搜索" })).toBeVisible();
+});
