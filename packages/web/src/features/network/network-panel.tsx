@@ -51,11 +51,13 @@ import type { NetRequest } from "../../api/net-log";
 import { formatBytes, formatTime, humanizeDuration } from "../../lib/format";
 import { writeClipboard } from "../../lib/clipboard";
 import { listModelExchanges } from "../../api/endpoints";
+import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { toneDot, toneInk } from "../../lib/tone";
 import type { DockPanelBodyProps } from "../dock/panel-registry";
 import { useChatDock } from "../chat/chat-dock-context";
 import { SseFrameList } from "../traces/sse-frame-list";
+import { pickModelExchange } from "./model-exchange-pick";
 import {
   filterNetEntries,
   groupByTurn,
@@ -101,11 +103,14 @@ function KeyValue({ label, children }: { label: string; children: ReactNode }) {
 function HeaderTable({
   rows,
   revealed,
+  empty = S.network.noBody,
 }: {
   rows: ReadonlyArray<readonly [string, string]>;
   revealed: boolean;
+  /** What an empty table means here: nothing was sent, or this page never saw it (a model call). */
+  empty?: string;
 }) {
-  if (rows.length === 0) return <p className="text-xs text-fg-subtle">{S.network.noBody}</p>;
+  if (rows.length === 0) return <p className="text-xs text-fg-subtle">{empty}</p>;
   const shown = revealed ? rows : maskHeaders(rows);
   return (
     <dl className="space-y-1">
@@ -124,13 +129,16 @@ function BodyBlock({
   text,
   truncated,
   revealed,
+  empty = S.network.noBody,
 }: {
   text: string | null;
   truncated: boolean;
   revealed: boolean;
+  /** What "no text" means here — "（空）" for a body that was empty, a reason when it was not. */
+  empty?: string;
 }) {
   if (text === null || text === "") {
-    return <p className="text-xs text-fg-subtle">{S.network.noBody}</p>;
+    return <p className="text-xs text-fg-subtle">{empty}</p>;
   }
   return (
     <div className="space-y-1">
@@ -251,6 +259,7 @@ export function NetworkPanel({ active }: DockPanelBodyProps) {
       {/* ---------------------------------------------------------------- detail (replaces list) */}
       {open !== null ? (
         <NetDetail
+          key={open.id}
           entry={open}
           sessionId={sessionId}
           active={active}
@@ -457,6 +466,10 @@ function RequestRow({ entry, onOpen }: { entry: NetRequest; onOpen: () => void }
   );
 }
 
+/** What the detail knows about a model row's bodies before they are in `entry`. */
+type ModelBodyNote =
+  { kind: "loading" } | { kind: "missing" } | { kind: "failed"; reason: string } | null;
+
 /** The in-panel detail view (opened by a row; ← returns to the list). */
 function NetDetail({
   entry,
@@ -490,6 +503,12 @@ function NetDetail({
   // server keeps the request/response in a ring (services/model-exchange-log.ts). Fetch it when
   // the row is opened — matched by the server-clock timestamp `request_end` carried — so only a
   // row someone is actually reading costs a request.
+  //
+  // The three answers this fetch can give read differently and are kept apart: still coming, the
+  // ring no longer holds it (it keeps the newest MODEL_EXCHANGE_CAP calls process-wide), and the
+  // request itself was refused. Drawing all three as "（空）" told the reader the provider was
+  // sent an empty request.
+  const [modelBodies, setModelBodies] = useState<ModelBodyNote>(null);
   const needsModelBodies =
     entry.kind === "model" &&
     entry.requestBody === null &&
@@ -500,28 +519,42 @@ function NetDetail({
     const endedAt = entry.serverEndedAt as number;
     const sid = sessionId as string;
     let cancelled = false;
+    setModelBodies({ kind: "loading" });
     void listModelExchanges(sid, { after: endedAt - 60_000, limit: 20 })
       .then(({ exchanges }) => {
         if (cancelled) return;
-        let best: (typeof exchanges)[number] | null = null;
-        for (const item of exchanges) {
-          const gap = Math.abs(item.endedAt - endedAt);
-          if (gap > 5_000) continue;
-          if (best === null || gap < Math.abs(best.endedAt - endedAt)) best = item;
+        const best = pickModelExchange(exchanges, endedAt);
+        if (best === null) {
+          setModelBodies({ kind: "missing" });
+          return;
         }
-        if (best === null) return;
         attachModelExchange(entry, {
           requestBody: best.requestJson,
           responseBody: best.responseJson,
           requestTruncated: best.requestTruncated,
           responseTruncated: best.responseTruncated,
         });
+        setModelBodies(null);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        if (!cancelled) setModelBodies({ kind: "failed", reason: apiErrorText(err) });
+      });
     return () => {
       cancelled = true;
     };
   }, [needsModelBodies, entry, sessionId]);
+
+  const bodyEmpty =
+    modelBodies === null
+      ? S.network.noBody
+      : modelBodies.kind === "loading"
+        ? S.network.modelBodyLoading
+        : modelBodies.kind === "missing"
+          ? S.network.modelBodyMissing
+          : S.network.modelBodyFailed(modelBodies.reason);
+  // A model call is made by the server, so this page never sees its headers — an empty table here
+  // is "not captured", not "none were sent".
+  const headerEmpty = entry.kind === "model" ? S.network.notCaptured : S.network.noBody;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-1.5 border-b border-line-muted px-3 py-2">
@@ -614,12 +647,13 @@ function NetDetail({
         {tab === "request" && (
           <>
             <p className="text-xs font-medium text-fg-muted">{S.network.headers}</p>
-            <HeaderTable rows={entry.headers} revealed={revealed} />
+            <HeaderTable rows={entry.headers} revealed={revealed} empty={headerEmpty} />
             <p className="pt-1 text-xs font-medium text-fg-muted">{S.network.requestBody}</p>
             <BodyBlock
               text={entry.requestBody}
               truncated={entry.requestTruncated}
               revealed={revealed}
+              empty={bodyEmpty}
             />
           </>
         )}
@@ -627,12 +661,13 @@ function NetDetail({
         {tab === "response" && (
           <>
             <p className="text-xs font-medium text-fg-muted">{S.network.responseHeaders}</p>
-            <HeaderTable rows={entry.responseHeaders} revealed={revealed} />
+            <HeaderTable rows={entry.responseHeaders} revealed={revealed} empty={headerEmpty} />
             <p className="pt-1 text-xs font-medium text-fg-muted">{S.network.responseBody}</p>
             <BodyBlock
               text={entry.responseBody}
               truncated={entry.responseTruncated}
               revealed={revealed}
+              empty={bodyEmpty}
             />
           </>
         )}

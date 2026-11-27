@@ -455,6 +455,10 @@ export const en: Strings = {
     responseBody: "Response body",
     noBody: "(empty)",
     truncated: "truncated",
+    /** A model row's bodies are fetched when the row opens: these are the three answers. */
+    modelBodyLoading: "Fetching this call's content from the server…",
+    modelBodyMissing: "The server has no record of this call (it keeps the last 100 model calls).",
+    modelBodyFailed: (reason: string) => `Could not fetch this call's content: ${reason}`,
     reveal: "Show raw",
     hide: "Hide raw",
     revealConfirmTitle: "Show raw values?",

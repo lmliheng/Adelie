@@ -531,6 +531,10 @@ export const zh = {
     responseBody: "响应体",
     noBody: "（空）",
     truncated: "已截断",
+    /** A model row's bodies are fetched when the row opens: these are the three answers. */
+    modelBodyLoading: "正在向服务器取这次调用的内容…",
+    modelBodyMissing: "服务器上没有这次调用的记录（模型调用只保留最近 100 次）。",
+    modelBodyFailed: (reason: string) => `取不到这次调用的内容：${reason}`,
     reveal: "显示原文",
     hide: "隐藏原文",
     revealConfirmTitle: "显示原文？",

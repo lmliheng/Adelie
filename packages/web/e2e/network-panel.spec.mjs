@@ -148,3 +148,27 @@ test("a row opens its detail inside the panel, tabs and back included", async ({
   await expect(dock.getByRole("button", { name: "本次回复", exact: true })).toBeVisible();
   await expect(dock.getByText("记录中")).toBeVisible();
 });
+
+test("a model row the server no longer keeps says so instead of (empty)", async ({ page }) => {
+  // The ring keeps the newest 100 calls process-wide (services/model-exchange-log.ts), so an older
+  // row has no bodies to fetch. Answer the fetch with an empty list — the state the panel sees in
+  // exactly that case — and read what the request tab says: "（空）" would claim the provider was
+  // sent an empty request, which is what this row used to say.
+  await page.route("**/model-exchanges*", (route) => route.fulfill({ json: { exchanges: [] } }));
+  await openSessionWithOneTurn(page);
+
+  await page.locator('[data-net-turn="1"]').click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+  await dock.getByRole("button").filter({ hasText: "◆" }).first().click();
+
+  await dock.getByRole("button", { name: "请求", exact: true }).click();
+  await expect(dock.getByText("请求体")).toBeVisible();
+  await expect(
+    dock.getByText("服务器上没有这次调用的记录（模型调用只保留最近 100 次）。"),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(dock.getByText("（空）")).toHaveCount(0);
+
+  // The page never saw this call's headers: that table says so rather than reading as "none sent".
+  await expect(dock.getByText("未采集").first()).toBeVisible();
+});
