@@ -348,6 +348,48 @@ export interface Messages {
     colItems(): string;
     colExpired(): string;
   };
+  /** `penguin device`: phones managed by a device bridge — listing, snapshots, screenshot, files, apps, shell, input, notifications and wireless pairing. */
+  device: {
+    desc: string;
+    listDesc: string;
+    infoDesc: string;
+    screenshotDesc: string;
+    filesDesc: string;
+    filesLsDesc: string;
+    filesPullDesc: string;
+    filesPushDesc: string;
+    appsDesc: string;
+    appsListDesc: string;
+    appsInstallDesc: string;
+    appsUninstallDesc: string;
+    shellDesc: string;
+    inputDesc: string;
+    notifyDesc: string;
+    notifyListDesc: string;
+    pairDesc: string;
+    eventsDesc: string;
+    outputOpt: string;
+    allOpt: string;
+    bridgeOpt: string;
+    wifiOpt: string;
+    limitOpt: string;
+    /** The empty list's three ways to get a phone in (design §7.1). */
+    empty(projectId: string): string;
+    /** Where a screenshot or pulled file landed, and how big it is. */
+    saved(path: string, bytes: number): string;
+    /** Under the QR: how to scan it, and when the code stops being usable. */
+    pairHint(serviceName: string, code: string, expiresAt: string): string;
+    pairWifiOnly: string;
+    /** The panel's "why is there no phone", in the bridge's own words. */
+    adbHint(message: string): string;
+    errorLine(code: string, message: string): string;
+    colName(): string;
+    colState(): string;
+    colTransport(): string;
+    colPlatform(): string;
+    colBattery(): string;
+    colLastSeen(): string;
+  };
   /** `penguin schedule`: scheduled-task listing and management (a validated writer over the schedules API; the TOML file stays the single source of truth). */
   schedule: {
     desc: string;
@@ -1500,6 +1542,45 @@ const en: Messages = {
     colExpired: () => "RETENTION",
   },
 
+  device: {
+    desc: "Manage the phones a device bridge has",
+    listDesc: "List the phones this Project can see",
+    infoDesc: "Show one phone's snapshot and audit trail",
+    screenshotDesc: "Take a screenshot and write it to a file",
+    filesDesc: "Files on the phone",
+    filesLsDesc: "List a directory",
+    filesPullDesc: "Copy one file from the phone to this machine",
+    filesPushDesc: "Copy one file from this machine to the phone",
+    appsDesc: "Apps on the phone",
+    appsListDesc: "List apps",
+    appsInstallDesc: "Install an APK",
+    appsUninstallDesc: "Uninstall an app",
+    shellDesc: "Run one shell command on the phone",
+    inputDesc: "Tap, swipe, type text or press a key",
+    notifyDesc: "Notifications on the phone",
+    notifyListDesc: "List recent titles (bodies are never stored)",
+    pairDesc: "Pair a phone wirelessly with a QR code (Android 11+)",
+    eventsDesc: "Show one phone's audit trail",
+    outputOpt: "Where to write it (default: the current directory)",
+    allOpt: "Include system apps",
+    bridgeOpt: "Which bridge to ask (default: the connected one)",
+    wifiOpt: "Wireless pairing: print the QR; the phone scans it and pairs",
+    limitOpt: "How many to list",
+    empty: (projectId) =>
+      `Project ${projectId} has no visible phone yet: plug in USB and allow debugging, or run penguin device pair --wifi to scan a QR. When the server is not on this machine, run penguin device-bridge there.`,
+    saved: (path, bytes) => `Saved ${path} (${bytes} bytes)`,
+    pairHint: (serviceName, code, expiresAt) =>
+      `On the phone, open Wireless debugging → Pair device with QR code and scan. Pairing code ${code}, service ${serviceName}, valid until ${expiresAt}; the phone shows up by itself once paired.`,
+    pairWifiOnly: "Only the wireless (QR) pairing exists in this build; add --wifi.",
+    adbHint: (message) => `The device bridge found no adb: ${message}`,
+    errorLine: (code, message) => `error: ${code}: ${message}`,
+    colName: () => "DEVICE",
+    colState: () => "STATE",
+    colTransport: () => "LINK",
+    colPlatform: () => "SYSTEM",
+    colBattery: () => "BATTERY",
+    colLastSeen: () => "LAST SEEN",
+  },
   schedule: {
     desc: "Manage scheduled tasks",
     lsDesc: "List the project's scheduled tasks (all agents unless --agent-id is given)",
@@ -2616,6 +2697,45 @@ const zh: Messages = {
     colTrashId: () => "回收站",
     colItems: () => "条目",
     colExpired: () => "保留期",
+  },
+  device: {
+    desc: "管理接入的手机（设备桥）",
+    listDesc: "列出这个 Project 能看到的手机",
+    infoDesc: "看一台手机的快照与审计",
+    screenshotDesc: "截屏并保存成文件",
+    filesDesc: "手机上的文件",
+    filesLsDesc: "列目录",
+    filesPullDesc: "把一个文件取到本机",
+    filesPushDesc: "把一个文件放到手机上",
+    appsDesc: "手机上的应用",
+    appsListDesc: "列出应用",
+    appsInstallDesc: "安装一个 APK",
+    appsUninstallDesc: "卸载一个应用",
+    shellDesc: "在手机上执行一条 shell 命令",
+    inputDesc: "点按、滑动、输入文字或按键",
+    notifyDesc: "手机上的通知",
+    notifyListDesc: "列出最近的标题（正文不落库）",
+    pairDesc: "用二维码把手机无线接进来（Android 11 及以上）",
+    eventsDesc: "看一台手机的操作审计",
+    outputOpt: "写到哪里（缺省为当前目录）",
+    allOpt: "包含系统应用",
+    bridgeOpt: "由哪个设备桥发起（缺省为在线的那个）",
+    wifiOpt: "无线配对：打印二维码，手机扫码后自动完成配对",
+    limitOpt: "最多列几条",
+    empty: (projectId) =>
+      `Project ${projectId} 还看不到手机：插上 USB 线并在手机上允许调试；或者用 penguin device pair --wifi 扫码配对；服务端不在本机时，还要在那台机器上跑 penguin device-bridge。`,
+    saved: (path, bytes) => `已保存 ${path}（${bytes} 字节）`,
+    pairHint: (serviceName, code, expiresAt) =>
+      `在手机上打开「无线调试 → 使用二维码配对设备」扫码。配对码 ${code}，服务名 ${serviceName}，${expiresAt} 前有效；配对成功后手机会自己出现在列表里。`,
+    pairWifiOnly: "目前只有无线（二维码）配对，请加 --wifi。",
+    adbHint: (message) => `设备桥没找到 adb：${message}`,
+    errorLine: (code, message) => `错误：${code}: ${message}`,
+    colName: () => "设备",
+    colState: () => "状态",
+    colTransport: () => "连接",
+    colPlatform: () => "系统",
+    colBattery: () => "电量",
+    colLastSeen: () => "最后在线",
   },
   schedule: {
     desc: "管理定时任务",

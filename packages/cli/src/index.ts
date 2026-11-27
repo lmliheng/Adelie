@@ -22,6 +22,7 @@ import { registerStorageCommand } from "./commands/storage.js";
 import { registerScheduleCommand } from "./commands/schedule.js";
 import { registerOrgCommand } from "./commands/org.js";
 import { registerBrowserCommand } from "./commands/browser.js";
+import { registerDeviceCommand } from "./commands/device.js";
 import { registerServeCommands } from "./commands/serve.js";
 import { registerUpdateCommand } from "./commands/update.js";
 import { registerVersionCommand } from "./commands/version.js";
@@ -64,6 +65,7 @@ export async function cli(argv: string[]): Promise<number> {
   registerScheduleCommand(program, t);
   registerOrgCommand(program, t);
   registerBrowserCommand(program, t);
+  registerDeviceCommand(program, t);
   registerServeCommands(program, t);
   registerUpdateCommand(program, t);
   registerVersionCommand(program, t);

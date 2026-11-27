@@ -339,6 +339,24 @@ export class FakeServer {
       },
     },
   });
+  /**
+   * The devices API (`/api/projects/:projectId/devices/*`): answers each request from its
+   * method, the path below that prefix, its query and its body. The default is a server with
+   * no device bridge running.
+   */
+  devices: (req: {
+    method: string;
+    projectId: string;
+    path: string;
+    query: URLSearchParams;
+    body?: Json;
+  }) => {
+    status?: number;
+    body?: unknown;
+  } = () => ({
+    status: 503,
+    body: { error: { code: "bridge_offline", message: "No device bridge is running." } },
+  });
 
   private nextSessionOrdinal = 1;
   private nextEventId = 1;
@@ -1944,6 +1962,19 @@ export class FakeServer {
       }
       if (method === "PUT") this.adminSettings = { ...this.adminSettings, ...body };
       return this.json({ settings: this.adminSettings });
+    }
+
+    m = /^\/api\/projects\/([^/]+)\/devices(\/.*)?$/.exec(apiPath);
+    if (m) {
+      const answer = this.devices({
+        method,
+        projectId: decodeURIComponent(m[1]!),
+        path: m[2] ?? "",
+        query: url.searchParams,
+        ...(body !== undefined ? { body } : {}),
+      });
+      const status = answer.status ?? 200;
+      return status === 204 ? new Response(null, { status }) : this.json(answer.body ?? {}, status);
     }
 
     m = /^\/api\/projects\/([^/]+)\/usage$/.exec(apiPath);

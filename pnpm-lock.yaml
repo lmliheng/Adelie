@@ -87,6 +87,9 @@ importers:
       '@adelie/data-analysis':
         specifier: workspace:*
         version: link:../../plugins/data-analysis
+      '@adelie/device':
+        specifier: workspace:*
+        version: link:../device
       '@adelie/goal':
         specifier: workspace:*
         version: link:../../plugins/goal
@@ -159,6 +162,9 @@ importers:
       smol-toml:
         specifier: ^1.3.0
         version: 1.6.1
+      uqr:
+        specifier: ^0.1.3
+        version: 0.1.3
       yaml:
         specifier: ^2.5.0
         version: 2.9.0
@@ -5030,6 +5036,7 @@ snapshots:
       '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
       '@adelie/csu-mail': file:plugins/csu-mail
       '@adelie/data-analysis': file:plugins/data-analysis
+      '@adelie/device': file:packages/device
       '@adelie/goal': file:plugins/goal
       '@adelie/gpu-model-serving': file:plugins/gpu-model-serving
       '@adelie/humanizer': file:plugins/humanizer
@@ -5054,6 +5061,7 @@ snapshots:
       commander: 13.1.0
       dotenv: 17.4.2
       smol-toml: 1.6.1
+      uqr: 0.1.3
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
