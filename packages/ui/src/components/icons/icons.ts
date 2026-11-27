@@ -72,6 +72,13 @@ export const ICONS = {
   /** Two stacked server units, each with its own status lamp. */
   server: "M4 4h16v6H4zM4 14h16v6H4zM7 7h.01M7 17h.01",
   /**
+   * A phone held upright: rounded body, the speaker slot at the top, the home mark at the
+   * bottom. `server` means the machine that runs the Agent; this means the device in a hand,
+   * which is a different kind of thing with a different lifecycle.
+   */
+  smartphone:
+    "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM10 4.5h4M11 18.5h2",
+  /**
    * A drive: the box with its lamp, and a platter drawn as the lid's slope. The Workspace
    * finder's one storage drawing — a fixed disk, a volume and a Linux root all take it.
    */

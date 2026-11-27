@@ -20,6 +20,7 @@ import type {
   DirListResponse,
   HookItem,
   InstalledPluginsResponse,
+  DevicesResponse,
   MachinesResponse,
   MeResponse,
   MemberInfo,
@@ -167,6 +168,7 @@ export interface DemoFixtures {
   benchmarkCases: Record<string, BenchmarkCaseSummary[]>;
   caseFiles: Record<string, Record<CaseMaterial, Record<string, string>>>;
   machines: MachinesResponse;
+  devices: DevicesResponse;
   version: VersionResponse;
   update: UpdateCheckResponse;
   memory: Record<string, { overview: MemoryOverviewResponse; files: MemoryFileResponse[] }>;
@@ -1080,6 +1082,190 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     jobs: [],
   };
 
+  const devices: DevicesResponse = {
+    devices: [
+      {
+        id: "android-R58M12ABC",
+        bridgeId: "adb-demo",
+        kind: "android",
+        name: "Pixel 8",
+        serial: "R58M12ABC",
+        transport: "usb",
+        platform: "Android 15",
+        state: "online",
+        capabilities: [
+          "info:read",
+          "apps:read",
+          "apps:write",
+          "files:read",
+          "files:write",
+          "screen:view",
+          "input:control",
+          "shell:exec",
+          "notifications:read",
+        ],
+        permissions: {
+          "info:read": true,
+          "apps:read": true,
+          "apps:write": false,
+          "files:read": false,
+          "files:write": false,
+          "screen:view": true,
+          "input:control": false,
+          "shell:exec": false,
+          "notifications:read": false,
+          "clipboard:read": false,
+          "clipboard:write": false,
+        },
+        pairedAt: iso(ago(3)),
+        lastSeenAt: iso(ago(0, 1)),
+        prefs: {},
+        bridgeOnline: true,
+        snapshot: {
+          static: {
+            at: iso(ago(0, 2)),
+            data: {
+              brand: "Google",
+              model: "Pixel 8",
+              device: "shiba",
+              serial: "R58M12ABC",
+              androidVersion: "15",
+              apiLevel: 35,
+              buildId: "AP4A.260105.001",
+              abi: "arm64-v8a",
+              cpu: "Tensor G3",
+              kernel: "6.1.75-android14",
+              rooted: false,
+              bootloaderLocked: true,
+              isEmulator: false,
+              firstSeenAt: iso(ago(3)),
+            },
+          },
+          dynamic: {
+            at: iso(ago(0, 0)),
+            data: {
+              power: {
+                level: 78,
+                charging: true,
+                status: "charging",
+                temperatureC: 31,
+                health: "good",
+              },
+              memory: {
+                totalBytes: 8_053_063_680,
+                availableBytes: 3_540_000_000,
+                usedBytes: 4_513_063_680,
+              },
+              storage: {
+                totalBytes: 119_122_165_760,
+                usedBytes: 53_610_000_000,
+                availableBytes: 65_512_165_760,
+              },
+              screen: {
+                widthPx: 1080,
+                heightPx: 2400,
+                densityDpi: 420,
+                refreshHz: 120,
+                orientation: "portrait",
+                locked: false,
+                brightness: 128,
+              },
+              network: {
+                wifi: { ssid: "HomeNet", ip: "192.168.1.23", rssi: -52, linkMbps: 433 },
+                addresses: ["192.168.1.23"],
+              },
+              foreground: "com.android.chrome",
+            },
+          },
+          apps: {
+            at: iso(ago(1)),
+            data: [{ packageName: "com.android.chrome", thirdParty: true }],
+          },
+          notifications: {
+            at: iso(ago(0, 30)),
+            data: [{ packageName: "com.tencent.mm", title: "微信", postedAt: iso(ago(0, 30)) }],
+          },
+        },
+        snapshotAgeMs: 12_000,
+        grants: ["default_project"],
+      },
+      {
+        id: "android-192-168-1-40-5555",
+        bridgeId: "adb-demo",
+        kind: "android",
+        name: "Xiaomi 14",
+        serial: "192.168.1.40:5555",
+        transport: "wifi",
+        platform: "Android 15",
+        state: "offline",
+        capabilities: [
+          "info:read",
+          "apps:read",
+          "apps:write",
+          "files:read",
+          "files:write",
+          "screen:view",
+          "input:control",
+          "shell:exec",
+          "notifications:read",
+        ],
+        permissions: {
+          "info:read": true,
+          "apps:read": true,
+          "apps:write": false,
+          "files:read": false,
+          "files:write": false,
+          "screen:view": false,
+          "input:control": false,
+          "shell:exec": false,
+          "notifications:read": false,
+          "clipboard:read": false,
+          "clipboard:write": false,
+        },
+        pairedAt: iso(ago(9)),
+        lastSeenAt: iso(ago(1)),
+        prefs: { note: "Lab phone" },
+        bridgeOnline: true,
+        snapshot: {
+          static: {
+            at: iso(ago(9)),
+            data: {
+              brand: "Xiaomi",
+              model: "Xiaomi 14",
+              androidVersion: "15",
+              apiLevel: 35,
+              firstSeenAt: iso(ago(9)),
+            },
+          },
+          dynamic: {
+            at: iso(ago(1)),
+            data: { power: { level: 22, charging: false, status: "discharging" } },
+          },
+        },
+        snapshotAgeMs: 86_400_000,
+        grants: [],
+      },
+    ],
+    bridges: [
+      {
+        id: "adb-demo",
+        name: "Adelie desktop · ADB",
+        kind: "desktop",
+        version: "0.8.7",
+        online: true,
+        lastSeenAt: iso(ago(0, 1)),
+        devices: 2,
+        revokedAt: null,
+      },
+    ],
+    adb: {
+      found: true,
+      path: "C:\\Users\\ada\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+      version: "1.0.41",
+      source: "android-studio",
+    },
+  };
+
   const version: VersionResponse = {
     version: "0.2.13",
     describe: "v0.2.13",
@@ -1876,6 +2062,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     benchmarkCases,
     caseFiles,
     machines,
+    devices,
     version,
     update,
     memory,

@@ -53,6 +53,13 @@ import type {
   DesktopTitleBarStatusResponse,
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
+  DeviceCommandResponse,
+  DeviceDetailResponse,
+  DeviceEventListResponse,
+  DeviceGrantsResponse,
+  DevicePermissionResponse,
+  DevicesResponse,
+  DeviceView,
   DirectorySkillsResponse,
   DirCreateResponse,
   DirDeleteResponse,
@@ -137,6 +144,7 @@ import type {
   StorageRestoreResponse,
   StorageSettingsResponse,
   StorageTrashResponse,
+  StreamWritesResponse,
   SubagentMessageResponse,
   TaskCreateResponse,
   TraceAnalysisResponse,
@@ -1805,6 +1813,10 @@ router
   .get("/api/sessions/:sessionId/model-exchanges", (): ModelExchangesResponse => ({
     exchanges: [],
   }))
+  // The network panel's "what the server wrote" view, by the stream id the page gave it. The
+  // demo's stream is the browser's, not a server's, so nothing was ever captured: null is the
+  // honest answer (the view then says so instead of an error).
+  .get("/api/sessions/:sessionId/stream-writes", (): StreamWritesResponse => ({ record: null }))
   .get("/api/sessions/:sessionId/goal", (): GoalResponse => ({ goal: null }))
   // The sidebar foot's 待做 block reads every open conversation. The demo starts the list empty
   // and keeps nothing: the PUT answers the list that was sent, so an edit lands visibly and a
@@ -3314,3 +3326,187 @@ router.get("/api/themes/registry", (): ThemeRegistryResponse => ({
 }));
 
 router.post("/api/themes/registry/import", () => readOnly("import a theme from the theme library"));
+
+// ---------------------------------------------------------------------------------------------
+// Devices
+// ---------------------------------------------------------------------------------------------
+
+const TINY_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+/** How the demo's audit times read: the newest a few minutes old, the oldest days. */
+const minutesAgo = (minutes: number): string =>
+  new Date(Date.now() - minutes * 60_000).toISOString();
+
+const demoDeviceEvents: DeviceDetailResponse["events"] = [
+  {
+    deviceId: "android-R58M12ABC",
+    at: minutesAgo(3),
+    kind: "action",
+    actor: "admin",
+    action: "screenshot",
+    detail: { op: "screenshot", ok: true },
+  },
+  {
+    deviceId: "android-R58M12ABC",
+    at: minutesAgo(12),
+    kind: "state",
+    actor: "system",
+    action: "online",
+    detail: { from: "connecting", to: "online" },
+  },
+  {
+    deviceId: "android-R58M12ABC",
+    at: minutesAgo(3 * 24 * 60),
+    kind: "state",
+    actor: "system",
+    action: "paired",
+    detail: { transport: "usb" },
+  },
+];
+
+const findDevice = (store: DemoStore, deviceId: string): DeviceView => {
+  const device =
+    store.f.devices.devices.find((row) => row.id === deviceId) ?? store.f.devices.devices[0];
+  if (device === undefined) fail(404, "not_found", `No device ${deviceId}.`);
+  return device;
+};
+
+const deviceGrants = (device: DeviceView): DeviceGrantsResponse => ({
+  grants: device.grants.map((projectId) => ({
+    projectId,
+    grantedBy: "admin",
+    grantedAt: minutesAgo(3 * 24 * 60),
+  })),
+});
+
+router
+  .get("/api/projects/:projectId/devices", ({ store }): DevicesResponse => store.f.devices)
+  .post("/api/projects/:projectId/devices/pair", (): DeviceCommandResponse => ({
+    ok: true,
+    data: {
+      pairing: {
+        qr: "WIFI:T:ADB;S:adb-0f1e2d3c;P:123456;;",
+        serviceName: "adb-0f1e2d3c",
+        code: "123456",
+        expiresAt: iso(now + 5 * 60_000),
+      },
+    },
+  }))
+  .get("/api/projects/:projectId/devices/:deviceId", ({ store, params }): DeviceDetailResponse => ({
+    device: findDevice(store, params.deviceId!),
+    events: demoDeviceEvents,
+  }))
+  .get("/api/projects/:projectId/devices/:deviceId/events", (): DeviceEventListResponse => ({
+    events: demoDeviceEvents,
+  }))
+  .post(
+    "/api/projects/:projectId/devices/:deviceId/commands",
+    ({ store, params, body }): DeviceCommandResponse => {
+      const device = findDevice(store, params.deviceId!);
+      const input = record(body);
+      const op = typeof input.op === "string" ? input.op : "";
+      const args = record(input.args ?? {});
+      switch (op) {
+        case "screenshot":
+          return { ok: true, data: { mimeType: "image/png", bytes: 70, base64: TINY_PNG_BASE64 } };
+        case "files.list":
+          return {
+            ok: true,
+            data: {
+              path: str(args.path, "/sdcard"),
+              entries: [
+                { name: "DCIM", dir: true, sizeBytes: 4096, modifiedAt: iso(ago(0, 20)) },
+                { name: "photo.jpg", dir: false, sizeBytes: 2_048_000, modifiedAt: iso(ago(1)) },
+              ],
+            },
+          };
+        case "files.pull":
+          return {
+            ok: true,
+            data: {
+              path: str(args.path, "/sdcard/photo.jpg"),
+              name: "photo.jpg",
+              mimeType: "image/jpeg",
+              bytes: 3,
+              base64: Buffer.from([0xff, 0xd8, 0xff]).toString("base64"),
+            },
+          };
+        case "files.push":
+          return { ok: true, data: { path: str(args.path, "/sdcard/x.jpg"), bytes: 3 } };
+        case "apps.list":
+          return {
+            ok: true,
+            data: {
+              apps: [
+                { packageName: "com.android.chrome", thirdParty: true },
+                { packageName: "com.tencent.mm", thirdParty: true },
+              ],
+              all: args.all === true,
+            },
+          };
+        case "apps.install":
+          return { ok: true, data: { bytes: 3, output: "Success" } };
+        case "apps.uninstall":
+          return {
+            ok: true,
+            data: { packageName: str(args.packageName, "com.example"), output: "Success" },
+          };
+        case "shell.exec":
+          return {
+            ok: true,
+            data: {
+              command: str(args.command, "getprop ro.product.model"),
+              code: 0,
+              stdout: `${device.name}\n`,
+              stderr: "",
+            },
+          };
+        case "input.tap":
+        case "input.swipe":
+        case "input.text":
+        case "input.key":
+          return { ok: true, data: {} };
+        case "notify.list":
+          return {
+            ok: true,
+            data: { notifications: device.snapshot?.notifications?.data ?? [], count: 1 },
+          };
+        case "snapshot.refresh":
+          return { ok: true, data: { at: iso(now) } };
+        default:
+          return { ok: false, error: { code: "unsupported", message: `The demo has no ${op}.` } };
+      }
+    },
+  )
+  .put(
+    "/api/projects/:projectId/devices/:deviceId/permissions",
+    ({ store, params, body }): DevicePermissionResponse => {
+      const device = findDevice(store, params.deviceId!);
+      const input = record(body);
+      const capability = typeof input.capability === "string" ? input.capability : "";
+      (device.permissions as Record<string, boolean>)[capability] = input.allowed === true;
+      return { device };
+    },
+  )
+  .post(
+    "/api/projects/:projectId/devices/:deviceId/grants",
+    ({ store, params, body }): DeviceGrantsResponse => {
+      const device = findDevice(store, params.deviceId!);
+      const target = str(record(body).projectId, "default_project");
+      if (!device.grants.includes(target)) device.grants.push(target);
+      return deviceGrants(device);
+    },
+  )
+  .delete(
+    "/api/projects/:projectId/devices/:deviceId/grants/:targetProjectId",
+    ({ store, params }): DeviceGrantsResponse => {
+      const device = findDevice(store, params.deviceId!);
+      device.grants = device.grants.filter((projectId) => projectId !== params.targetProjectId);
+      return deviceGrants(device);
+    },
+  )
+  .delete("/api/projects/:projectId/devices/:deviceId", ({ store, params }): Answer => {
+    store.f.devices.devices = store.f.devices.devices.filter((row) => row.id !== params.deviceId);
+    return empty();
+  });

@@ -15,6 +15,8 @@ export const NAV_ICONS = {
   models: ICONS.chip,
   /** Machines (two stacked server units). */
   machines: ICONS.server,
+  /** Devices (a phone): the peripheral, not the machine that hosts the Agent. */
+  devices: ICONS.smartphone,
   usage: ICONS.barChart,
   /** Trace observation (an open eye): watching what a run actually did. */
   traces: ICONS.eye,

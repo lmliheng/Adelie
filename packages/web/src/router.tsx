@@ -35,6 +35,7 @@ import { FinancePage } from "./features/company/finance-page";
 import { ChannelView } from "./features/company/channel-view";
 import { HandbookPage } from "./features/company/handbook-page";
 import { MachinesPage } from "./features/machines/machines-page";
+import { DevicesPage } from "./features/devices/devices-page";
 import { WorkflowAppPage } from "./features/workflows/workflow-app-page";
 import { PetPage } from "./features/pet/pet-page";
 import { PAGES } from "./lib/pages";
@@ -52,6 +53,7 @@ const BUILTIN_PAGES: Record<string, React.ComponentType> = {
   ModelsPage,
   PluginDetailPage,
   MachinesPage,
+  DevicesPage,
   UsagePage,
   BenchmarkPage,
   BenchmarkDetailPage,

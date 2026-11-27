@@ -83,6 +83,17 @@
         }
       },
       {
+        "id": "web.devices",
+        "key": "devices",
+        "path": "/devices",
+        "nav": "main",
+        "admin": false,
+        "released": true,
+        "renderer": {
+          "builtin": "DevicesPage"
+        }
+      },
+      {
         "id": "web.usage",
         "key": "usage",
         "path": "/usage",

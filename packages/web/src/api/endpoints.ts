@@ -50,6 +50,14 @@ import type {
   CommandPolicyRuleDto,
   DefaultModelResponse,
   DefaultModelUpdateRequest,
+  DeviceCommandRequest,
+  DeviceCommandResponse,
+  DeviceDetailResponse,
+  DeviceEventListResponse,
+  DeviceGrantsResponse,
+  DevicePermissionRequest,
+  DevicePermissionResponse,
+  DevicesResponse,
   DesktopPrivacyPane,
   DesktopUpdateStatusResponse,
   DirAccessResponse,
@@ -3137,4 +3145,72 @@ export const importThemeFromRegistry = (body: ThemeRegistryImportRequest) =>
     method: "POST",
     body,
     server: null,
+  });
+
+// Devices --------------------------------------------------------------------------------
+//
+// Phones belong to the instance; the Project in the path decides what this caller may see and
+// use (design §4.5, §6). Reads are on by default, writes are per-device grants plus a
+// per-command `approve`, so `runDeviceCommand` takes the whole request body.
+
+const devicesPath = (projectId: string): string =>
+  `/api/projects/${encodeURIComponent(projectId)}/devices`;
+
+const oneDevice = (projectId: string, deviceId: string): string =>
+  `${devicesPath(projectId)}/${encodeURIComponent(deviceId)}`;
+
+/** Everything this Project can see: its devices, every bridge row, and what adb the bridge found. */
+export const listDevices = (projectId: string) => apiFetch<DevicesResponse>(devicesPath(projectId));
+
+/** One device with its layered snapshot and audit trail. */
+export const getDevice = (projectId: string, deviceId: string) =>
+  apiFetch<DeviceDetailResponse>(oneDevice(projectId, deviceId));
+
+/** The audit trail alone, newest first. */
+export const listDeviceEvents = (projectId: string, deviceId: string, limit?: number) =>
+  apiFetch<DeviceEventListResponse>(`${oneDevice(projectId, deviceId)}/events`, {
+    query: { limit },
+  });
+
+/** Runs one command; `approve: true` is the per-command consent a write capability requires. */
+export const runDeviceCommand = (projectId: string, deviceId: string, body: DeviceCommandRequest) =>
+  apiFetch<DeviceCommandResponse>(`${oneDevice(projectId, deviceId)}/commands`, {
+    method: "POST",
+    body,
+  });
+
+/** Grants or revokes one capability ON this device (admin). */
+export const setDevicePermission = (
+  projectId: string,
+  deviceId: string,
+  body: DevicePermissionRequest,
+) =>
+  apiFetch<DevicePermissionResponse>(`${oneDevice(projectId, deviceId)}/permissions`, {
+    method: "PUT",
+    body,
+  });
+
+/** Lets another Project use this device (admin). */
+export const grantDeviceToProject = (projectId: string, deviceId: string, target: string) =>
+  apiFetch<DeviceGrantsResponse>(`${oneDevice(projectId, deviceId)}/grants`, {
+    method: "POST",
+    body: { projectId: target },
+  });
+
+/** Takes that grant back (admin). */
+export const revokeDeviceGrant = (projectId: string, deviceId: string, target: string) =>
+  apiFetch<DeviceGrantsResponse>(
+    `${oneDevice(projectId, deviceId)}/grants/${encodeURIComponent(target)}`,
+    { method: "DELETE" },
+  );
+
+/** Forgets the device; its audit rows stay (admin). */
+export const forgetDevice = (projectId: string, deviceId: string) =>
+  apiFetch<void>(oneDevice(projectId, deviceId), { method: "DELETE" });
+
+/** Starts Android 11's wireless pairing on one bridge and answers the QR payload (admin). */
+export const startDevicePairing = (projectId: string, bridgeId?: string) =>
+  apiFetch<DeviceCommandResponse>(`${devicesPath(projectId)}/pair`, {
+    method: "POST",
+    body: bridgeId === undefined ? {} : { bridgeId },
   });
