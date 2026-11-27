@@ -36030,8 +36030,8 @@ console / pageerror 四组合全空。**反证**：涂鸦浅色下把活动厂�
 8991、数据根 r358，跑完已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
 
 **遗留**：同族仍在灰阶上的还有 `model-picker-modal.tsx:268` 与 `plugins-page.tsx:1727` 的
-`bg-gray-100 dark:bg-gray-800`（浅色是淡的 `--ui-line-muted`，可读）、`channel-sidebar.tsx` 已无；
-`bg-gray-100` 作填充的还有 107 处，属于另一遍清扫，守卫只管 `bg-gray-200` 这一档。
+`bg-gray-100 dark:bg-gray-800`（浅色那一档是淡的 `--ui-line-muted`，压字可读）；`bg-gray-100` 作填充的
+还有一百多处，属于另一遍清扫，这条守卫只管 `bg-gray-200` 这一档。
 
 ### 提交
 
