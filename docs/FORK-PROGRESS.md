@@ -4116,6 +4116,16 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       无新依赖，记录只在内存里**）：一条安静下来的流原先答不了「是没写，还是写了没送到」——浏览器那
       一侧数着自己的帧，服务端那一侧写着「未采集」。现在服务端把写出的每一帧记在一个有界环上（最近
       50 条连接、每条 500 帧，挤掉的条数写明），面板读回来画在浏览器计数旁边。见「第三百六十二轮」一节。
+- [x] **7.232 `main` 的 CI 三处红：手机桥的两套用例在 Windows 上跑不起来、一个资产没格式化**
+      （**2026-11-28 第三百六十四轮**落地，提交见「已完成的轮次」；4 个文件、全是测试夹具与格式 ——
+      `packages/device-adb/test/bridge.test.ts`（端点改走 `bridgeEndpoint(dir, basename, process.platform)`、
+      并像服务端那样先建 socket 的目录）、`packages/server/test/devices-bridge.test.ts`（不覆盖端点，改问
+      `hub.address()`；「没留下 socket」那条只在 POSIX 上断言）、`packages/device-adb/test/adb-script.test.ts`
+      （「真可执行文件」那一组在 win32 上显式 skip）、`android/app/src/main/assets/phone.js`（prettier）——
+      **不碰产品行为、不碰接口、无新依赖**）：CI run `46079022099`（`22a9d924e`）红了 `style (prettier)`、
+      `test-windows (rest)`、`test-windows (server-1)` 三个作业，原因三条都与产品逻辑无关 —— 两份桥接用例把
+      `net` 的端点指到一个普通路径（Windows 上那是 EACCES，named pipe 才有名字），假 adb 是 `#!/bin/sh`
+      脚本（Windows 上没有解释器会去读它），`phone.js` 一直是单引号。见「第三百六十四轮」一节。
 
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
@@ -7379,6 +7389,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-27 | 7.229 | **换布局不再丢掉网络面板的读者位置：搜索词、范围、类型、打开的那条记录与它的详情页**（**2026-11-27 第三百六十一轮**落地；`packages/web` 新 `features/network/network-place.ts`、`features/network/net-focus.ts` 的「已执行」戳与单调加盖、`network-panel.tsx` 从到来的位置起算且每次改动写记录、`builtin-dock-panels.tsx` 的 `NetworkPanelBody` 算出所在的面、两份单测（7 + 4 条）、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：网络面板晚于「换布局不再丢掉…」那一族（7.152–7.157），阅读状态一直只在组件自己的 `useState` 里，换布局即清空；照 `trace-place.ts` 的规则按对话存一份位置（只在跨面时恢复、恰好是面板自己打开时的样子就不记、发出去的是拷贝），并把「看这一回合」的跳转改成由执行它的面板体记成已执行（原先每挂载一次就重放，会把刚恢复的范围与记录清掉） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 214 接口 / 647 类型）；`oxlint` 改动 11 文件 **0 警告 0 错误**；9 个改动文件 `prettier --check` 干净、`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **374 / 4145 / 2 跳过**（+2 文件 / +11 条即本笔）；`network-panel.spec.mjs` **6 passed**（含新用例）；**反证**：两个源码文件退回 `HEAD`、重建 web 后同一条真浏览器探针 → 换到下侧栏与换回右侧栏两次都是搜索词空、本次回复/全部选中、详情关上；本笔之下两次都留在详情与「响应」页，关标签再打开则从头开始（对照）；两态 console / pageerror 全 0 | `9ec773c2c` |
 | 2026-11-28 | 7.230 | **设备桥接上宿主：`@adelie/device` 的帧 + 服务端的注册表 / 六张表 / 每台设备的权限与审计**（**2026-11-28 第三百六十二轮**接手落地；两笔提交 `1229424ea` 与 `4b0c06fce`）：桥经数据根下的 socket 上报（Windows 是带安装 id 的命名管道），宿主认出并记下设备，权限按每台设备分开（读开写关、写要逐次同意），设备是实例级、跨 Project 要授权，审计只记动作不记正文；migration 18 additive、swapSafe | 七包 `typecheck` `EXIT=0`（`ifaces.json` 215 接口 / 647 类型）；device **6 文件 / 34** · server **226 文件 / 3260 + 6 跳过** 全绿；`oxlint` 0 警告 0 错误、`prettier --check` 干净；起真服务确认 `device bridge: listening on …/run/device-bridge.sock` 且 `/devices` 路由在册 | `1229424ea` `4b0c06fce` |
 | 2026-11-28 | 7.231 | **网络面板的事件流页读得到服务端写出了什么**（**2026-11-28 第三百六十二轮**落地）：连接用 `requestId` 起名，服务端把写出的每一帧记在有界环上（50 条连接 × 500 帧、写明挤掉几条、被挤掉的不复活），新增 `GET /api/sessions/:id/stream-writes`，面板在「事件流」页读回来并每 3 秒重读，记录不全时不与浏览器计数比较 | server **226 / 3260 + 6 跳过** · web **375 文件 / 4149 + 2 跳过** · cli **39 / 568** · ui **133 / 1119** 全绿；`network-panel.spec.mjs` **7 passed**（含新用例）；真浏览器两态：本笔 44 帧 + 帧列表，把记录扣掉则显示「没有这条连接的写帧记录」（管理员身份 console / pageerror / 4xx 全 0） | `874d8b70c` |
+| 2026-11-28 | 7.232 | **`main` 的 CI 三处红：手机桥的两套用例在 Windows 上跑不起来、`phone.js` 没格式化**（**2026-11-28 第三百六十四轮**落地；4 个文件、全是夹具与格式：`packages/device-adb/test/bridge.test.ts` 的端点改走 `bridgeEndpoint(dir, path.basename(dir), process.platform)` 并先建 socket 目录、`packages/server/test/devices-bridge.test.ts` 不再覆盖端点（`endpoint = hub.address()`）且「没留下 socket」只在 POSIX 断言、`packages/device-adb/test/adb-script.test.ts` 的「真可执行文件」一组在 win32 上 `describe.skipIf`、`android/app/src/main/assets/phone.js` 过 prettier —— **不碰产品行为、不碰接口、无新依赖**）：CI `46079022099`（`22a9d924e`）红的 `style (prettier)` / `test-windows (rest)` / `test-windows (server-1)` 三个作业，根因是以普通路径当端点（Windows 上是 EACCES，`\\.\pipe\…` 才有名字）、假 adb 是 `#!/bin/sh`（Node 不许无 shell 跑 `.cmd`，而 runner 又是无 shell 起的）、单引号资产 | 七包 `typecheck` **`EXIT=0`**（device-adb / core / ui / hmr / server / cli / web 七个 `Done`）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 全仓 `pnpm format:check` **干净** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：device-adb **6 文件 / 63**（改前 1 文件因 `listen EACCES` 整份报错、57 通过 6 跳过，即本地复现出来的同一条）· core **71 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过**（其中 `devices-bridge` 4 条）· web **375 / 4150 + 2 跳过** · 本机是 Linux，Windows 那一侧真正算数的是推上去之后重跑的 `test-windows (rest)` / `test-windows (server-1)` · 端口一个没起、3003 / 3004 / 4000 / 7364 / 7369 一个没碰 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36483,3 +36494,81 @@ run `45959010563`，`331a58396`，**success**）——没有红可捡；又按�
   四份单测、三处夹具对齐、`pnpm-lock.yaml`）、**`874d8b70c`**（`services/stream-writes.ts`、
   `http/sse.ts`、`http/routes/sessions.ts`、web 的 sse / 面板 / 纯逻辑 / 两份单测 / e2e / changelog
   一对）；台账（条目 7.230、7.231、上表两行、本节）随本文件另起一笔。
+
+## 第三百六十四轮：`main` 的 CI 三处红 —— 手机桥的两套用例在 Windows 上起不来、一个资产没格式化（2026-11-28，条目 7.232）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `22a9d924e`，`git fetch origin` 一次即通、
+`git merge --ff-only origin/main` 无内容（已是最新；没有切分支、没碰 `legacy/main`、没推 upstream）。
+`ps` 里没有 vitest / tsc / pnpm，`.git/index` 停在 06:50（最后一笔提交），没有另一条线在跑。
+**号**：本地已有八笔没进台账（`2ff8182f3` 设备演示数据 … `22a9d924e` 网络面板的模型行地址），它们是
+设备那一族，留给**第三百六十三轮**补记；本轮跳号用 364，条目号接着 7.231 记为 **7.232**。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、3.6 要
+模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板 / 新依赖），第 7 节到 7.231 全勾。于是先看 `main` 的 CI：
+最新 run **`46079022099`**（`22a9d924e`，22:50 UTC）红了三个作业 —— `style (prettier)`、
+`test-windows (rest)`、`test-windows (server-1)`。逐条拉日志（PAT 拉 `actions/jobs/<id>/logs`，`-L`
+跟重定向）：
+
+- **`style`**：只点名一个文件，`android/app/src/main/assets/phone.js`。
+- **`test-windows (rest)`**：`@adelie/device-adb` 的 `test/bridge.test.ts` 整份报错 ——
+  `listen EACCES … \Temp\adelie-bridge-c16PkT\device-bridge.sock`（`net.listen` 在 Windows 上要的是
+  `\\.\pipe\…`，普通路径给不了），`test/adb-script.test.ts` 三条「真可执行文件」全红（`version()` 回
+  `null`、`devices()` 没写状态文件、`shell()` 回空串）。两次尝试都一样。
+- **`test-windows (server-1)`**：`packages/server/test/devices-bridge.test.ts` 四条全红在
+  「timed out waiting for hello_ok / refusal」——那条用例把 hub 的端点覆盖成一个临时路径，同样 listen
+  不起来，`hub.start()` 的错误只进了 `log`，于是假桥永远等不到回应。
+
+三条都与产品逻辑无关：产品侧本来就按平台算端点（`bridgeEndpoint()` 在 win32 给带安装 id 的命名管道，
+Hub 也只在非管道时才建目录 / 删文件）。
+
+**做了什么**（4 个文件，一个字节的产品代码都没动）：
+
+- `packages/device-adb/test/bridge.test.ts`：端点不再写死 `<tmp>/device-bridge.sock`，改成
+  `bridgeEndpoint(dir, path.basename(dir), process.platform)` —— 与桌面壳 / `adelie-device-bridge` / 服务端
+  同一条规则，`mkdtemp` 的后缀保证两次并发跑不共用一条管道。另外**照 Hub 的做法先建 socket 的目录**
+  （`run/`，0700）：Hub 会建，这个假宿主原先不建，换成产品路径后本地立刻撞上 `EACCES`（目录不存在），
+  这一处是本轮自己踩出来的。文件头与 `describe` 的名字从「over a Unix socket」改成「over the bridge
+  endpoint」——它现在在 Windows 上也真跑。
+- `packages/server/test/devices-bridge.test.ts`：不再传 `endpoint` 覆盖，改用 `hub.address()`（产品自己算的
+  那个地址）。最后那条「没留下 socket」的断言只在 POSIX 上做（`fs.existsSync` 对管道名恒为假，留着等于
+  空断言），注释写明管道没有文件可留。
+- `packages/device-adb/test/adb-script.test.ts`：「真可执行文件」那一组改成 `describe.skipIf(process.platform
+  === "win32")`。原因写在注释里：假 adb 只能做成 `#!/bin/sh` 脚本或 `.cmd`，而 Node 拒绝在没有 shell 时
+  spawn `.cmd`/`.bat`（CVE-2024-27980 的修法），`nodeAdbRunner` 又**故意**不带 shell 起进程（手机上的
+  shell 元字符不许落到宿主）——真实的 adb 是 `adb.exe`，在 Windows 上照跑，只是这个夹具造不出来。纯逻辑
+  的 `findAdb` 那一组照旧三平台都跑。
+- `android/app/src/main/assets/phone.js`：`prettier --write`，23 行改动全是引号风格（`'use strict'` →
+  `"use strict"` 之类），无行为变化。
+
+**改前实测（本地复现）**：`pnpm --filter @adelie/device-adb exec vitest run` 在改前的端点上没有复现出
+Windows 那条（Linux 的普通路径是合法的），但换上 `bridgeEndpoint` 之后先撞上的是「`run/` 目录不存在 →
+`listen EACCES /tmp/adelie-bridge-Jfd0qH/run/device-bridge.sock`」，补上建目录后 **6 文件 / 63 通过**。
+
+### 验证
+
+- 七包 `typecheck` **`EXIT=0`**：device-adb / core / ui / hmr / server / cli / web 七个 `Done`。
+- 全仓 `pnpm format:check`（`prettier --check .`）**干净**（改前只有 `phone.js` 一个 warn，与 CI 一致）。
+- `oxlint` 4 个改动文件 **0 警告 0 错误**；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：device-adb **6 文件 / 63** · core **71 / 1469 + 6 跳过** ·
+  ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过**（`devices-bridge` 4 条在内）·
+  web **375 / 4150 + 2 跳过**。
+- **Windows 那一侧本机验不了**（Linux 上没有命名管道可建，也不许无 shell 跑 `.cmd`）：这一笔真正的验收是
+  推上去之后 GitHub 重跑的 `test-windows (rest)` / `test-windows (server-1)` 与 `style`。
+- 没有起服务、没有碰界面（本笔不动界面），端口一个没起，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 「真可执行文件」那一组在 Windows 上仍然不跑（现在写明是 skip，而不是红）。要真覆盖 Windows 的进程
+  层，得给它一个 `.exe`（要么带一个预编译的小夹具、要么在 CI 上先装 Git-Bash 的 `sh.exe` 并让夹具指过
+  去），两条都超出「不引入新依赖、最小改动」的范围。
+- `android/app/src/main/assets/phone.js` 是手写的资产（不是构建产物），所以是格式化它，而不是加进
+  `.prettierignore`。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 那八笔未入台账的提交（设备那一族 + 四处小修）没有并进本轮：它们不是这一条，仍留给 363 补记。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 本笔（4 个文件：两份桥接用例、假 adb 那一组、`phone.js`）；台账（条目 7.232、上表那一行、本节）随本文件
+  另起一笔。
