@@ -99,7 +99,7 @@ export function OrgSwitcher({ onNavigate }: { onNavigate?: () => void }) {
             aria-label={triggerLabel}
             aria-haspopup="menu"
             aria-expanded={open}
-            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors duration-150 hover:bg-gray-200/70 dark:hover:bg-gray-800"
+            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors duration-150 hover:bg-fg/7"
           >
             <span className="min-w-0 flex-1">
               <span className={`flex items-center ${ICON_GAP.row}`}>
@@ -129,9 +129,7 @@ export function OrgSwitcher({ onNavigate }: { onNavigate?: () => void }) {
               <span
                 aria-hidden
                 className={`shrink-0 rounded-full px-1.5 text-xs font-semibold tabular-nums ${
-                  company.channelMentions > 0
-                    ? toneSurface.attention
-                    : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                  company.channelMentions > 0 ? toneSurface.attention : "bg-fg/10 text-fg"
                 }`}
               >
                 {company.channelMentions > 0

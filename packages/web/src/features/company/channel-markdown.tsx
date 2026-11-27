@@ -137,6 +137,10 @@ export function ChannelReaderProvider({
  * attention-toned when it addresses the reader. The ordinary chip sits one step deeper than
  * the app's usual grey fill, because the bubble it is printed on is that grey (the neutral
  * surface of the package's `ChannelBubble`) and a chip the colour of its background is not a chip.
+ * The step is an ink wash rather than a fill token: on a surface that already IS the neutral
+ * fill, a fill would land on its own colour, and the wash follows the theme's ink in every
+ * theme — an imported theme points the grey ramp at its outline colour, where the chip's old
+ * grey fill came out as dark as the words on it.
  */
 export function MentionChip({ raw, label, me }: { raw: string; label: string; me: boolean }) {
   return (
@@ -145,7 +149,7 @@ export function MentionChip({ raw, label, me }: { raw: string; label: string; me
       className={`rounded px-1 ${
         me
           ? `font-semibold ${toneSurface.attention}`
-          : "bg-gray-200 font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+          : "bg-fg/10 font-medium text-gray-800 dark:text-gray-100"
       }`}
     >
       @{label}

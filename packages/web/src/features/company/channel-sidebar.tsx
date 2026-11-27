@@ -87,7 +87,7 @@ function NewChannelButton({
         data-tooltip={label}
         aria-label={label}
         onClick={() => setOpen(true)}
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors duration-150 hover:bg-gray-200/70 hover:text-gray-800 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors duration-150 hover:bg-fg/7 hover:text-fg dark:text-gray-500"
       >
         <PlusIcon size={ICON_SIZE.groupHeaderAction} />
       </button>
@@ -168,7 +168,7 @@ function ChannelRow({
         <button
           type="button"
           onClick={join}
-          className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 rounded bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600 opacity-0 transition-opacity duration-150 hover:text-gray-900 focus:pointer-events-auto focus:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
+          className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 rounded bg-fg/10 px-1.5 py-0.5 text-xs text-gray-600 opacity-0 transition-opacity duration-150 hover:text-gray-900 focus:pointer-events-auto focus:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 dark:text-gray-300 dark:hover:text-gray-100"
         >
           {S.company.channels.join}
         </button>
@@ -356,9 +356,7 @@ export function ChannelRailRows({ projectId, orgId }: { projectId: string; orgId
               <span
                 aria-hidden
                 className={`absolute -right-0.5 -top-0.5 min-w-[14px] rounded-full px-1 text-xs font-semibold leading-[14px] tabular-nums ${
-                  channel.mentionsMe > 0
-                    ? toneSurface.attention
-                    : "bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-100"
+                  channel.mentionsMe > 0 ? toneSurface.attention : "bg-fg/10 text-fg"
                 }`}
               >
                 {channel.unread > 99 ? "99+" : channel.unread}

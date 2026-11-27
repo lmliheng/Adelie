@@ -73,14 +73,14 @@ const LIGHT: TerminalChrome = {
   grip: "text-gray-400",
   tabActive: "bg-gray-100 text-gray-900",
   tabIdle: "text-gray-500 hover:bg-gray-100 hover:text-gray-800",
-  tabKill: "bg-gray-100 hover:bg-gray-200",
+  tabKill: "bg-fill-neutral hover:bg-fg/10",
   muted: "text-gray-500",
   /** The light halves of the shared status tones (lib/tone.ts). */
   success: "text-emerald-600",
   attention: "text-amber-600",
   danger: "text-red-600",
   outlineButton: "border-gray-300 text-gray-600 hover:bg-gray-100",
-  keyCap: "border-gray-300 bg-gray-50 text-gray-700 active:bg-gray-200",
+  keyCap: "border-gray-300 bg-gray-50 text-gray-700 active:bg-fg/10",
   keyCapArmed: "border-amber-600 bg-amber-100 text-amber-700",
 };
 

@@ -359,7 +359,7 @@ function ModelPickerBody({
                 onClick={() => activateGroup(i, "rail")}
                 className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2.5 py-1 text-sm transition-colors duration-150 sm:w-full sm:rounded-md sm:border-transparent sm:py-1.5 sm:dark:border-transparent ${
                   active
-                    ? "border-gray-300 bg-gray-200/70 font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    ? "border-gray-300 bg-fill-neutral font-medium text-gray-900 dark:border-gray-700 dark:text-gray-100"
                     : "border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-800/70 dark:hover:text-gray-200"
                 }${keyboardHere ? " ring-1 ring-inset ring-gray-400 dark:ring-gray-500" : ""}`}
               >

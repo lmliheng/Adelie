@@ -40,7 +40,7 @@ export function PathCapsule({ path }: { path: string }) {
         onClick={() => flash(path)}
         // Baseline-aligned on the label, so the capsule sits on the sentence's line; the glyph
         // centres itself instead of dragging the baseline down to its own bottom edge.
-        className="inline-flex max-w-full items-baseline gap-1 rounded bg-gray-100 px-1 text-gray-700 transition-colors duration-150 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/40 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+        className="inline-flex max-w-full items-baseline gap-1 rounded bg-fill-neutral px-1 text-fg transition-colors duration-150 hover:bg-fg/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/40"
       >
         <GlyphIcon
           d={glyph}

@@ -37,7 +37,7 @@ export function GoalStatusBanner({ goal }: { goal: GoalBannerState }) {
             ? goal.status === "complete"
               ? toneSurface.success
               : toneSurface.attention
-            : "bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+            : "bg-fg/10 text-gray-600 dark:text-gray-300"
         }`}
       >
         {S.chat.goalStatus[goal.status]}

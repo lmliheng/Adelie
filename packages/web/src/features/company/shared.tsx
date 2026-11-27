@@ -451,7 +451,7 @@ export function PrincipalChip({
         <span
           aria-hidden
           style={{ width: size, height: size, fontSize: Math.round(size * 0.6) }}
-          className="flex shrink-0 items-center justify-center rounded-full bg-gray-900 font-bold text-white dark:bg-gray-200 dark:text-gray-900"
+          className="flex shrink-0 items-center justify-center rounded-full bg-fg font-bold text-canvas"
         >
           {label.slice(0, 1).toUpperCase()}
         </span>

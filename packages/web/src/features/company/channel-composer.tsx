@@ -383,11 +383,7 @@ export function ChannelComposer({
               >
                 {segments.map((seg, i) =>
                   seg.mention ? (
-                    <span
-                      key={i}
-                      data-mention=""
-                      className="rounded-sm bg-gray-200 ring-2 ring-gray-200 dark:bg-gray-700 dark:ring-gray-700"
-                    >
+                    <span key={i} data-mention="" className="rounded-sm bg-fg/10 ring-2 ring-fg/10">
                       {seg.text}
                     </span>
                   ) : (

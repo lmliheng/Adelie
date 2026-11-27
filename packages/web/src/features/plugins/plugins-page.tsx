@@ -1644,7 +1644,7 @@ function PluginFilters({
       onClick={onClick}
       className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm transition-colors duration-150 ${
         on
-          ? "bg-gray-200/70 font-medium text-gray-900 dark:bg-gray-700/70 dark:text-gray-100"
+          ? "bg-fill-neutral font-medium text-gray-900 dark:text-gray-100"
           : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/70"
       }`}
     >

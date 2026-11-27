@@ -61,7 +61,7 @@ export function SseFrameList({ sessionId, active }: { sessionId: string; active:
           onClick={toggle}
           className={`${PILL_CLASS} ${
             enabled
-              ? "border-gray-400 bg-gray-200/70 font-semibold text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              ? "border-gray-400 bg-fill-neutral font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-100"
               : "border-gray-200 text-gray-500 hover:bg-gray-100 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-800/60"
           }`}
         >
