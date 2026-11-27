@@ -12,6 +12,8 @@ SITE="${SITE_ROOT:-/opt/adelie-design}"
 NAME="$(basename "$APK")"
 DEST_DIR="$SITE/downloads/android"
 BASE_URL="${BASE_URL:-http://127.0.0.1:3003}"
+# 给大家用的地址走 design 子域（nginx 直接发 /opt/adelie-design 下的文件，带 TLS）
+PUBLIC_URL="${PUBLIC_URL:-https://design.lmliheng.work}"
 
 mkdir -p "$DEST_DIR"
 cp "$APK" "$DEST_DIR/$NAME"
@@ -147,4 +149,4 @@ PY
 echo "== 校验下载"
 curl -sI "$BASE_URL/downloads/android/$NAME" | sed -n '1p;/content-length/Ip;/content-type/Ip'
 curl -s "$BASE_URL/downloads/index.json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("versions:", [v["tag"] for v in d["versions"]]); print("files:", [f["name"] for v in d["versions"] for f in v["files"]])'
-echo "下载地址：$BASE_URL/downloads/android/$NAME"
+echo "下载地址：$PUBLIC_URL/downloads/android/$NAME"

@@ -43,8 +43,8 @@ Termux 里的 `node` 用不了：它的 RUNPATH 与 19 处前缀都写死在
 
 | | |
 | --- | --- |
-| 下载 | http://adelie.lmliheng.work:3003/downloads/android/adelie-android-arm64-1.3.4-beta.apk |
-| 清单条目 | http://adelie.lmliheng.work:3003/downloads/index.json（`android-test`） |
+| 下载 | https://design.lmliheng.work/downloads/android/adelie-android-arm64-1.3.4-beta.apk |
+| 清单条目 | https://design.lmliheng.work/downloads/index.json（`android-test`） |
 | 大小 | 101,227,004 字节（96.5 MiB） |
 | sha256 | `3d0279a70dfd05a3da9746f50a8985139a65d1767f74800a56c3dba70a230323` |
 | 包名 / 版本 | `dev.adelie.app` / 1.3.4-beta（versionCode 55，工程自带签名，可以直接覆盖 1.0.2 及之后的版本） |
