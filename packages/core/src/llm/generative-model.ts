@@ -44,6 +44,14 @@ import type {
 } from "@prismshadow/agenthub";
 
 import {
+  emitModelExchange,
+  exchangeMessages,
+  hasModelExchangeSink,
+  splitExchangeConfig,
+} from "./model-exchange.js";
+import type { ModelExchangeRecord } from "./model-exchange.js";
+
+import {
   addTokenCounts,
   assistantText,
   emptyTokenCounts,
@@ -1132,9 +1140,49 @@ export function isFatalProviderRejection(error: unknown): boolean {
  * streaming aggregation, and token accumulation. **It never retries internally** — retries are
  * handled by `context_engine`.
  */
+/** The in-flight half of a model record while its stream is open (see llm/model-exchange.ts). */
+interface ExchangeDraft {
+  startedAt: number;
+  request: ModelExchangeRecord["request"];
+  response: ModelExchangeRecord["response"];
+}
+
+/**
+ * Fold one streamed message into the draft's response. Text and thinking concatenate; a tool call
+ * accumulates per `tool_call_id` (the protocol streams name once and arguments in fragments, and a
+ * provider may repeat the name on later fragments — the last non-empty one wins).
+ */
+function noteExchangeMessage(draft: ExchangeDraft | null, msg: OmniMessage): void {
+  if (draft === null) return;
+  const p = msg.payload as {
+    type?: string;
+    text?: string;
+    thinking?: string;
+    name?: string;
+    arguments?: string;
+    tool_call_id?: string;
+  };
+  if (p.type === "partial_text") {
+    draft.response.text += p.text ?? "";
+  } else if (p.type === "partial_thinking") {
+    draft.response.thinking += p.thinking ?? "";
+  } else if (p.type === "partial_tool_call") {
+    const id = p.tool_call_id ?? "";
+    let call = draft.response.toolCalls.find((c) => c.toolCallId === id);
+    if (call === undefined) {
+      call = { name: "", arguments: "", toolCallId: id };
+      draft.response.toolCalls.push(call);
+    }
+    if (p.name) call.name = p.name;
+    call.arguments += p.arguments ?? "";
+  }
+}
+
 export class GenerativeModel implements LLMInterface {
   private client: AutoLLMClient;
   private readonly clientOptions: Omit<ConstructorParameters<typeof AutoLLMClient>[0], "apiKey">;
+  /** The Session this model serves, for the network panel's model records (null outside one). */
+  private readonly exchangeSessionId: string | null;
   private currentApiKey: string | undefined;
   private readonly resolveApiKey: (() => Promise<string | undefined>) | undefined;
   private readonly uniConfig: UniConfig;
@@ -1202,6 +1250,7 @@ export class GenerativeModel implements LLMInterface {
     };
     this.currentApiKey = config.apiKey;
     this.resolveApiKey = config.resolveApiKey;
+    this.exchangeSessionId = config.sessionId ?? null;
     this.client = new AutoLLMClient({
       ...this.clientOptions,
       ...(this.currentApiKey !== undefined ? { apiKey: this.currentApiKey } : {}),
@@ -1406,17 +1455,45 @@ export class GenerativeModel implements LLMInterface {
     // The upstream iterator, kept outside the try so the finally below can close it: a consumer
     // that leaves before the stop would otherwise leave generation running.
     let it: AsyncIterator<UniEvent> | undefined;
+    // What actually went over the wire, for the network panel's model rows: the request as the
+    // provider will receive it, and the response stitched back from the stream. Only built when
+    // a host installed a sink (llm/model-exchange.ts), so a bare core pays one boolean check.
+    let exchange: ExchangeDraft | null = null;
+    const reportExchange = (result: LLMOutcome): void => {
+      if (exchange === null) return;
+      emitModelExchange({
+        sessionId: this.exchangeSessionId,
+        model: this.clientOptions.model,
+        clientType: this.clientOptions.clientType ?? null,
+        baseUrl: this.clientOptions.baseUrl ?? null,
+        startedAt: exchange.startedAt,
+        endedAt: Date.now(),
+        status: result.status,
+        errorCode: result.errorCode ?? null,
+        errorMessage: result.errorMessage ?? null,
+        request: exchange.request,
+        response: exchange.response,
+      });
+    };
     try {
       await this.refreshApiKey();
       // The seller counts images per request, not per message: a conversation that read five
       // pictures would fail every later turn with 400 media_count_exceeded, so the oldest
       // replayed ones — and, when the input alone overflows, the input's own oldest ones — are
       // dropped from THIS request (the history and Trace keep them).
-      it = this.openStream(
-        this.fitReplayedVideos(this.fitReplayedImages(uniMessage)),
-        ac.signal,
-        this.requestConfig(params.thinkingLevel, params.newMessages),
-      )[Symbol.asyncIterator]();
+      const fitted = this.fitReplayedVideos(this.fitReplayedImages(uniMessage));
+      const config = this.requestConfig(params.thinkingLevel, params.newMessages);
+      if (hasModelExchangeSink()) {
+        exchange = {
+          startedAt: Date.now(),
+          request: {
+            ...splitExchangeConfig(config),
+            messages: exchangeMessages(this.client.getHistory(), fitted),
+          },
+          response: { text: "", thinking: "", toolCalls: [] },
+        };
+      }
+      it = this.openStream(fitted, ac.signal, config)[Symbol.asyncIterator]();
       for (;;) {
         // The interruption check must happen **before pulling from upstream**: the user may
         // interrupt while this generator is suspended at the `yield` below (the typical case —
@@ -1455,7 +1532,10 @@ export class GenerativeModel implements LLMInterface {
           outcome = { status: "aborted" };
           break;
         }
-        for (const msg of translator.pushEvent(res.value)) yield msg;
+        for (const msg of translator.pushEvent(res.value)) {
+          noteExchangeMessage(exchange, msg);
+          yield msg;
+        }
       }
     } catch (error) {
       // User interruption **takes priority**: even if the idle timer fires at the same time,
@@ -1554,6 +1634,7 @@ export class GenerativeModel implements LLMInterface {
       // Interrupted/errored: close any opened streaming segments and backfill the complete message, producing no token_usage.
       const reason: StopReason = outcome.status === "completed" ? "retryable" : outcome.status;
       for (const msg of translator.finishInterrupted(reason)) yield msg;
+      reportExchange(outcome);
       return outcome;
     }
 
@@ -1568,6 +1649,7 @@ export class GenerativeModel implements LLMInterface {
     // the engine accumulates and stamps token_usage.session on every message it forwards.
     // The request counts stand in for consumers running a GenerativeModel without an engine.
     yield tokenUsage(requestTokens, requestTokens);
+    reportExchange({ status: "completed" });
     return { status: "completed" };
   }
 

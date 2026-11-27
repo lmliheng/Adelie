@@ -92,6 +92,7 @@ import type {
   MemoryScopeExport,
   MeResponse,
   MessagesResponse,
+  ModelExchangesResponse,
   MessagingBindingsResponse,
   MessagingChannel,
   MessagingTestMessageResponse,
@@ -301,6 +302,7 @@ import type {
 import type { MCPServerConfig } from "@adelie/core/interfaces";
 import type { RunRequest } from "@adelie/amsp";
 import { apiFetch, apiFetchStream, apiFetchWithMeta } from "./client";
+import { MULTIPART_THRESHOLD_BYTES, uploadAttachmentInParts } from "./multipart-upload";
 import { machineForSession, rememberSessionMachine } from "../lib/session-machines";
 import { apiUrl } from "../lib/server-context";
 import { activityCursorParam } from "../lib/session-grouping";
@@ -1453,19 +1455,43 @@ export const postSteer = (
  * the browser streams it from disk: no base64 string, no copy of it inside a task body, and no
  * reason for the page to hold the file at all. The answer's `path` is what a
  * `{type:"file", path}` part then names (see TaskInputPart).
+ *
+ * Small files go out as that one request. Large ones take the chunked, parallel route (see
+ * api/multipart-upload.ts): on a slow link a single stream is bounded by its congestion window,
+ * and several slices in flight is what a big file needs. Both paths answer the same shape and
+ * report the same progress, so nothing above this function knows which one ran.
  */
 export const uploadSessionAttachment = (
   sessionId: string,
   file: File,
   name: string,
   onUploadProgress?: (sent: number, total: number) => void,
+): Promise<AttachmentUploadResponse> =>
+  file.size >= MULTIPART_THRESHOLD_BYTES
+    ? uploadAttachmentInParts(sessionId, file, name, onUploadProgress)
+    : apiFetch<AttachmentUploadResponse>(
+        `/api/sessions/${encodeURIComponent(sessionId)}/attachments`,
+        {
+          method: "POST",
+          query: { name },
+          rawBody: file,
+          ...(onUploadProgress !== undefined ? { onUploadProgress } : {}),
+        },
+      );
+
+/**
+ * The requests Adelie sent to the model provider for this Session, with their responses — the
+ * content behind the network panel's model rows. `after` is a SERVER-clock ms bound (the row's
+ * `request_end` timestamp), which is how the panel asks for just the call it is showing.
+ */
+export const listModelExchanges = (
+  sessionId: string,
+  options: { after?: number; limit?: number } = {},
 ) =>
-  apiFetch<AttachmentUploadResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/attachments`, {
-    method: "POST",
-    query: { name },
-    rawBody: file,
-    ...(onUploadProgress !== undefined ? { onUploadProgress } : {}),
-  });
+  apiFetch<ModelExchangesResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/model-exchanges`,
+    { query: { after: options.after, limit: options.limit } },
+  );
 
 /** Panel message to one subagent child (#272) — a user input on the child, whatever its state: steered mid-run, started on an idle child, resumed when the released session was revived (the child runs at its own Session's thinking level; pin it with patchSession). 404 subagent_gone when nothing can be revived, 409 subagent_busy when the child cannot take it right now. */
 export const messageSubagent = (sessionId: string, childSessionId: string, text: string) =>

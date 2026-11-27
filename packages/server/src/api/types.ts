@@ -3140,6 +3140,62 @@ export interface AttachmentUploadResponse {
   bytes: number;
 }
 
+/**
+ * POST /api/sessions/:sessionId/attachments/multipart — announce a chunked upload.
+ *
+ * The client names the file and its size; the server allocates the scratchpad file at that size
+ * and answers the slice plan. The bytes themselves then go out as `PUT .../:uploadId/:index`
+ * requests, several in flight at once, and `POST .../:uploadId/complete` produces the same
+ * {@link AttachmentUploadResponse} the single-shot route does.
+ */
+export interface MultipartUploadStartRequest {
+  /** The file's submitted name, validated like a single-shot upload's `name` query. */
+  name: string;
+  /** Total bytes; the server refuses it when it exceeds the admin's per-file cap. */
+  size: number;
+}
+
+export interface MultipartUploadStartResponse {
+  /** 128-bit hex id; every slice and the completion name it. */
+  uploadId: string;
+  /** Bytes per slice, and the size every slice but the last must carry. */
+  chunkSize: number;
+  /** `ceil(size / chunkSize)`, fixed at start so the client can plan its workers. */
+  totalChunks: number;
+}
+
+/**
+ * GET /api/sessions/:sessionId/model-exchanges — the requests Adelie sent to the model provider
+ * and the responses it got back, newest kept in a process-wide ring.
+ *
+ * This is the content behind the network panel's "模型" rows: the stream already tells the page
+ * that a call began and ended, and this is what actually crossed the wire.
+ */
+export interface ModelExchangeEntry {
+  /** Process-wide monotonic id — orders two calls that ended in the same second. */
+  seq: number;
+  sessionId: string | null;
+  model: string;
+  clientType: string | null;
+  baseUrl: string | null;
+  startedAt: number;
+  endedAt: number;
+  /** `completed` / `aborted` / `retryable` / `fatal`, the same vocabulary `request_end` uses. */
+  status: string;
+  errorCode: string | null;
+  errorMessage: string | null;
+  /** The request as JSON: `{systemPrompt, tools, config, messages}` (capped, see requestTruncated). */
+  requestJson: string;
+  requestTruncated: boolean;
+  /** The response as JSON: `{text, thinking, toolCalls}` (capped, see responseTruncated). */
+  responseJson: string;
+  responseTruncated: boolean;
+}
+
+export interface ModelExchangesResponse {
+  exchanges: ModelExchangeEntry[];
+}
+
 export interface ApprovalDecisionRequest {
   decision: "allow" | "deny";
 }

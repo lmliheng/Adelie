@@ -76,6 +76,7 @@ import type {
   MemoryScopeExport,
   MeResponse,
   MessagesResponse,
+  MultipartUploadStartResponse,
   MessagingBindingsResponse,
   ModelBalanceResponse,
   ModelProtocolDetectResponse,
@@ -180,6 +181,9 @@ type Ctx = RequestContext;
 
 const record = (body: unknown): Record<string, unknown> =>
   typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+
+/** Names of in-flight chunked uploads in the demo, so completion can answer with the submitted name. */
+const multipartDrafts = new Map<string, string>();
 
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
@@ -1744,6 +1748,56 @@ router
       201,
     );
   })
+  // Chunked upload (a large attachment goes out as parallel slices). The demo keeps nothing, so
+  // the plan is answered from the size, every slice is accepted, and completion hands back the
+  // same shape the single-shot route above does.
+  .post("/api/sessions/:sessionId/attachments/multipart", ({ store, params, body }): Answer => {
+    if (!store.session(params.sessionId!)) notFound("Session");
+    const b = record(body);
+    const name = typeof b.name === "string" ? b.name : "attachment";
+    const size = typeof b.size === "number" ? b.size : 0;
+    const chunkSize = 4 * 1024 * 1024;
+    multipartDrafts.set("demo-upload", name);
+    return json(
+      {
+        uploadId: "demo-upload",
+        chunkSize,
+        totalChunks: Math.max(1, Math.ceil(size / chunkSize)),
+      } satisfies MultipartUploadStartResponse,
+      201,
+    );
+  })
+  .put(
+    "/api/sessions/:sessionId/attachments/multipart/:uploadId/:index",
+    ({ store, params }): Answer => {
+      if (!store.session(params.sessionId!)) notFound("Session");
+      return empty();
+    },
+  )
+  .post(
+    "/api/sessions/:sessionId/attachments/multipart/:uploadId/complete",
+    ({ store, params }): Answer => {
+      if (!store.session(params.sessionId!)) notFound("Session");
+      const name = multipartDrafts.get(params.uploadId!) ?? "attachment";
+      multipartDrafts.delete(params.uploadId!);
+      return json(
+        {
+          fileName: name,
+          path: `/demo/scratchpad/${name}`,
+          bytes: 0,
+        } satisfies AttachmentUploadResponse,
+        201,
+      );
+    },
+  )
+  .delete(
+    "/api/sessions/:sessionId/attachments/multipart/:uploadId",
+    ({ store, params }): Answer => {
+      if (!store.session(params.sessionId!)) notFound("Session");
+      multipartDrafts.delete(params.uploadId!);
+      return empty();
+    },
+  )
   .get("/api/sessions/:sessionId/goal", (): GoalResponse => ({ goal: null }))
   // The sidebar foot's 待做 block reads every open conversation. The demo starts the list empty
   // and keeps nothing: the PUT answers the list that was sent, so an edit lands visibly and a

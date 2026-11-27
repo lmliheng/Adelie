@@ -173,6 +173,7 @@ import { UsageRecorder } from "./runtime/usage-recorder.js";
 import { previewRoutes } from "./http/routes/preview.js";
 import { MachinesService } from "./machines/service.js";
 import { wire } from "@adelie/core/kernel";
+import { installModelExchangeLog } from "./services/model-exchange-log.js";
 import type { Settings } from "./mechanisms/settings.js";
 import type { Errors } from "./mechanisms/observability.js";
 import type { Access } from "./mechanisms/projects.js";
@@ -345,6 +346,9 @@ export function platformLog(hmr: ServerHmrHost): (line: string) => void {
 
 /** Assembles the Hono app (does not listen on a port). */
 export function createApp(boot: ServerBoot): Hono<AppEnv> {
+  // The network panel's model rows read what this sink keeps (services/model-exchange-log.ts).
+  // Idempotent: every generation's createApp shares the one process-wide ring.
+  installModelExchangeLog();
   // Resolved on use, from the CURRENT generation's tree — the entry's replace hook points
   // `boot.tree` at each new one — so a node is never the first generation's for the life
   // of the process. A generation that has no tree to resolve from (a pushed fixture, a

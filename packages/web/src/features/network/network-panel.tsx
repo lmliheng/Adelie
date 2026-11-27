@@ -31,6 +31,7 @@ import {
   Segmented,
 } from "@adelie/ui";
 import {
+  attachModelExchange,
   clearNetLog,
   maskBody,
   maskHeaders,
@@ -49,6 +50,7 @@ import {
 import type { NetRequest } from "../../api/net-log";
 import { formatBytes, formatTime, humanizeDuration } from "../../lib/format";
 import { writeClipboard } from "../../lib/clipboard";
+import { listModelExchanges } from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { toneDot, toneInk } from "../../lib/tone";
 import type { DockPanelBodyProps } from "../dock/panel-registry";
@@ -484,6 +486,42 @@ function NetDetail({
   onOpenRow: (id: number) => void;
 }) {
   const failed = isNetFailure(entry);
+  // A model row's content is not on this page: the stream gave the row its boundaries, and the
+  // server keeps the request/response in a ring (services/model-exchange-log.ts). Fetch it when
+  // the row is opened — matched by the server-clock timestamp `request_end` carried — so only a
+  // row someone is actually reading costs a request.
+  const needsModelBodies =
+    entry.kind === "model" &&
+    entry.requestBody === null &&
+    entry.serverEndedAt !== null &&
+    sessionId !== null;
+  useEffect(() => {
+    if (!needsModelBodies) return;
+    const endedAt = entry.serverEndedAt as number;
+    const sid = sessionId as string;
+    let cancelled = false;
+    void listModelExchanges(sid, { after: endedAt - 60_000, limit: 20 })
+      .then(({ exchanges }) => {
+        if (cancelled) return;
+        let best: (typeof exchanges)[number] | null = null;
+        for (const item of exchanges) {
+          const gap = Math.abs(item.endedAt - endedAt);
+          if (gap > 5_000) continue;
+          if (best === null || gap < Math.abs(best.endedAt - endedAt)) best = item;
+        }
+        if (best === null) return;
+        attachModelExchange(entry, {
+          requestBody: best.requestJson,
+          responseBody: best.responseJson,
+          requestTruncated: best.requestTruncated,
+          responseTruncated: best.responseTruncated,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [needsModelBodies, entry, sessionId]);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-1.5 border-b border-line-muted px-3 py-2">

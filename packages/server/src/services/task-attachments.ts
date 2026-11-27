@@ -327,6 +327,44 @@ async function withAttachmentName<T>(
   );
 }
 
+/**
+ * The submitted file name's own rules, shared by the two upload routes (single-shot and chunked
+ * — multipart-uploads.ts commits through this module on purpose, so both answer the same way).
+ * A name is only a name: no separators, no `..`, no NUL, and not absurdly long.
+ */
+export function validateAttachmentName(name: string): void {
+  if (
+    name.length === 0 ||
+    name.length > 512 ||
+    name.includes("/") ||
+    name.includes("\\") ||
+    name.includes("..") ||
+    name.includes("\0")
+  ) {
+    throw badRequest('name must be a non-empty file name without path separators or "..".');
+  }
+}
+
+/**
+ * Give a file that was already written somewhere else its final scratchpad name.
+ *
+ * The chunked upload writes its slices into a hidden part file and only calls this once every
+ * slice arrived. A hard link under a `wx`-allocated name keeps the two properties the single-shot
+ * route has: a collision gets a suffixed name instead of overwriting, and the commit is atomic —
+ * a reader never sees a half-linked file (the part file is the only copy in flight, and it is
+ * removed after the link). Same directory either way, so the link never crosses a filesystem.
+ */
+export async function commitAttachmentFile(
+  dir: string,
+  fileName: string,
+  source: string,
+): Promise<string> {
+  return withAttachmentName(dir, fileName, async (file) => {
+    await fs.link(source, file);
+    return file;
+  });
+}
+
 /** Write one inline attachment into `dir` and return its absolute path. */
 async function writeAttachment(dir: string, attachment: InlineAttachment): Promise<string> {
   return withAttachmentName(dir, attachment.fileName, async (file) => {

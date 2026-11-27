@@ -31,6 +31,8 @@ import type {
   MessagesLiveTail,
   MessagesPageInfo,
   MessagesResponse,
+  ModelExchangesResponse,
+  MultipartUploadStartResponse,
   RecalledMessageResponse,
   ServerEvent,
   SessionCategory,
@@ -129,8 +131,17 @@ import {
   readRecalledFiles,
   receiveAttachment,
   removeAttachments,
+  validateAttachmentName,
 } from "../../services/task-attachments.js";
 import type { RecallableFile, TaskAttachment } from "../../services/task-attachments.js";
+import {
+  abortMultipartUpload,
+  finishMultipartUpload,
+  requireMultipartUpload,
+  startMultipartUpload,
+  writeMultipartChunk,
+} from "../../services/multipart-uploads.js";
+import { listModelExchanges, MODEL_EXCHANGE_CAP } from "../../services/model-exchange-log.js";
 import {
   INLINE_IMAGE_MAX_BYTES,
   INLINE_IMAGE_MAX_MB,
@@ -1235,16 +1246,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
   app.post("/:sessionId/attachments", async (c) => {
     const row = resolveSession(c);
     const name = c.req.query("name") ?? "";
-    if (
-      name.length === 0 ||
-      name.length > 512 ||
-      name.includes("/") ||
-      name.includes("\\") ||
-      name.includes("..") ||
-      name.includes("\0")
-    ) {
-      throw badRequest('name must be a non-empty file name without path separators or "..".');
-    }
+    validateAttachmentName(name);
     const limits = toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb());
     const dir = await openSessionScratchpad(
       scratchpadDir(deps.config.root, row.projectId, row.agentId),
@@ -1252,6 +1254,52 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     );
     const received = await receiveAttachment(dir, name, c.req.raw.body, limits.maxBytes);
     return c.json(received satisfies AttachmentUploadResponse, 201);
+  });
+
+  // Chunked, parallel upload for large attachments — the transport that lets one file cross a
+  // slow link at the sum of several TCP streams' windows instead of one. See
+  // services/multipart-uploads.ts for the reasoning and the state. Four routes, one upload:
+  //   POST   …/attachments/multipart                    announce name+size → slice plan
+  //   PUT    …/attachments/multipart/:uploadId/:index    one slice, raw body, any order
+  //   POST   …/attachments/multipart/:uploadId/complete  every slice in → the route above's answer
+  //   DELETE …/attachments/multipart/:uploadId           give up, drop the part file
+  app.post("/:sessionId/attachments/multipart", async (c) => {
+    const row = resolveSession(c);
+    const body = await readJson(c);
+    const name = requireString(body, "name", { label: "name" });
+    validateAttachmentName(name);
+    const size = body.size;
+    if (typeof size !== "number") throw badRequest("size must be a positive integer of bytes.");
+    const limits = toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb());
+    const dir = await openSessionScratchpad(
+      scratchpadDir(deps.config.root, row.projectId, row.agentId),
+      row.sessionId,
+    );
+    const started = await startMultipartUpload(dir, row.sessionId, name, size, limits.maxBytes);
+    return c.json(started satisfies MultipartUploadStartResponse, 201);
+  });
+
+  app.put("/:sessionId/attachments/multipart/:uploadId/:index", async (c) => {
+    const row = resolveSession(c);
+    const up = requireMultipartUpload(row.sessionId, pathParam(c, "uploadId"));
+    const index = parseNonNegativeInt(pathParam(c, "index"));
+    if (index === null) throw badRequest("index must be a non-negative integer.");
+    await writeMultipartChunk(up, index, c.req.raw.body);
+    return c.body(null, 204);
+  });
+
+  app.post("/:sessionId/attachments/multipart/:uploadId/complete", async (c) => {
+    const row = resolveSession(c);
+    const up = requireMultipartUpload(row.sessionId, pathParam(c, "uploadId"));
+    const received = await finishMultipartUpload(up);
+    return c.json(received satisfies AttachmentUploadResponse, 201);
+  });
+
+  app.delete("/:sessionId/attachments/multipart/:uploadId", async (c) => {
+    const row = resolveSession(c);
+    const up = requireMultipartUpload(row.sessionId, pathParam(c, "uploadId"));
+    await abortMultipartUpload(up);
+    return c.body(null, 204);
   });
 
   // Session scratchpad files (input images saved to disk for image-unsupported models, the
@@ -2037,6 +2085,23 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
       ...parts,
       compactionThreshold: await sessionCompactionThreshold(deps, row),
     } satisfies SessionContextResponse);
+  });
+
+  // The network panel's model rows: what Adelie actually sent to the provider and what came
+  // back. The Session stream already reports each call's boundaries (request_begin /
+  // request_end, which is what draws the row); this is its content, from the process-wide ring
+  // in services/model-exchange-log.ts. `after` is a server-clock ms bound so the page can pick
+  // up just the call it is filling in, and `limit` is clamped to the ring's own cap.
+  app.get("/:sessionId/model-exchanges", (c) => {
+    const row = resolveSession(c);
+    const after = parseNonNegativeInt(c.req.query("after") ?? "") ?? 0;
+    const limit = Math.min(
+      Math.max(parseNonNegativeInt(c.req.query("limit") ?? "") ?? 20, 1),
+      MODEL_EXCHANGE_CAP,
+    );
+    return c.json({
+      exchanges: listModelExchanges(row.sessionId, after, limit),
+    } satisfies ModelExchangesResponse);
   });
 
   app.get("/:sessionId/traces", async (c) => {

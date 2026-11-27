@@ -69,6 +69,7 @@ function entry(over: Partial<NetRequest> = {}): NetRequest {
     responseTruncated: false,
     responseBytes: 0,
     frameCount: null,
+    serverEndedAt: null,
     ...over,
   };
 }

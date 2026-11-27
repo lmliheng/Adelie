@@ -70,6 +70,12 @@ export interface NetRequest {
   responseBytes: number;
   /** Frames received on a stream connection; null for a request. */
   frameCount: number | null;
+  /**
+   * A model row's `request_end` timestamp in the SERVER's clock (the event is stamped where it
+   * was produced), which is what lets the panel match the row to its content: the record the
+   * server keeps is timed in that same clock, while `startedAt` here is this browser's.
+   */
+  serverEndedAt: number | null;
 }
 
 export interface NetRequestStart {
@@ -91,6 +97,7 @@ export interface NetRequestFinish {
   responseHeaders?: ReadonlyArray<readonly [string, string]>;
   responseBody?: string | null;
   frameCount?: number | null;
+  serverEndedAt?: number | null;
 }
 
 // ----------------------------------------------------------------------------- preferences
@@ -271,6 +278,7 @@ export function startNetRequest(input: NetRequestStart): NetRequest | null {
     responseTruncated: false,
     responseBytes: 0,
     frameCount: null,
+    serverEndedAt: null,
   };
   nextId += 1;
   push(entry);
@@ -291,6 +299,7 @@ export function finishNetRequest(entry: NetRequest | null, patch: NetRequestFini
   if (patch.attempts !== undefined) entry.attempts = patch.attempts;
   if (patch.responseHeaders !== undefined) entry.responseHeaders = patch.responseHeaders;
   if (patch.frameCount !== undefined) entry.frameCount = patch.frameCount;
+  if (patch.serverEndedAt !== undefined) entry.serverEndedAt = patch.serverEndedAt;
   if (patch.responseBody !== undefined) {
     const keep = prefs.recordBody ? patch.responseBody : null;
     const capped = capBody(keep);
@@ -298,6 +307,32 @@ export function finishNetRequest(entry: NetRequest | null, patch: NetRequestFini
     entry.responseTruncated = capped.truncated;
     entry.responseBytes = keep === null ? 0 : new TextEncoder().encode(keep).length;
   }
+  notify();
+}
+
+/**
+ * Fill a model row with the request and response that crossed the wire.
+ *
+ * The row itself is drawn from the stream's `request_begin`/`request_end`; the content comes from
+ * `GET /api/sessions/:id/model-exchanges` (the server's ring — see services/model-exchange-log.ts).
+ * The panel calls this when the row's detail opens, so only a row someone is reading is fetched.
+ */
+export function attachModelExchange(
+  entry: NetRequest | null,
+  bodies: {
+    requestBody: string;
+    responseBody: string;
+    requestTruncated: boolean;
+    responseTruncated: boolean;
+  },
+): void {
+  if (entry === null || !entries.includes(entry)) return;
+  if (!prefs.recordBody) return;
+  entry.requestBody = bodies.requestBody;
+  entry.requestTruncated = bodies.requestTruncated;
+  entry.responseBody = bodies.responseBody;
+  entry.responseTruncated = bodies.responseTruncated;
+  entry.responseBytes = new TextEncoder().encode(bodies.responseBody).length;
   notify();
 }
 
@@ -331,6 +366,7 @@ export function noteNetModelEvent(sessionId: string | null, msg: OmniMessage): v
       resolution: payload.status ?? null,
       attempts: typeof payload.attempt === "number" ? payload.attempt : 1,
       error: payload.status === "fatal" ? (payload.error_message ?? null) : null,
+      serverEndedAt: Number.isNaN(Date.parse(msg.timestamp)) ? null : Date.parse(msg.timestamp),
     });
   }
 }

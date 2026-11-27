@@ -80,6 +80,32 @@ test("the reply's request line opens the Network panel on that turn", async ({ p
   await expect(dock.getByText("记录中")).toBeVisible();
 });
 
+test("a model row shows what Adelie sent the provider and what came back", async ({ page }) => {
+  await openSessionWithOneTurn(page);
+
+  await page.locator('[data-net-turn="1"]').click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+
+  // Model rows wear ◆ as their method; the first one is this turn's request to the provider.
+  await dock.getByRole("button").filter({ hasText: "◆" }).first().click();
+
+  // What was sent: the request body is the messages/tools/config JSON, fetched from the server
+  // when the row opened (the row itself comes from the stream's request_begin/request_end).
+  await dock.getByRole("button", { name: "请求", exact: true }).click();
+  await expect(dock.getByText("请求体")).toBeVisible();
+  await expect(dock.locator("pre").filter({ hasText: '"messages"' })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // What came back: the model's own answer, stitched from its stream.
+  await dock.getByRole("button", { name: "响应", exact: true }).click();
+  await expect(dock.getByText("响应体")).toBeVisible();
+  await expect(dock.locator("pre").filter({ hasText: '"text"' })).toBeVisible({
+    timeout: 15_000,
+  });
+});
+
 test("the Network panel opens from the dock picker with its controls", async ({ page }) => {
   const sessionId = await openSessionWithOneTurn(page);
 

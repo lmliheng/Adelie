@@ -25,6 +25,13 @@ export {
 } from "./generative-model.js";
 export { listEndpointModels } from "./list-models.js";
 export type { ListEndpointModelsOptions } from "./list-models.js";
+export { emitModelExchange, hasModelExchangeSink, setModelExchangeSink } from "./model-exchange.js";
+export type {
+  ModelExchangeRecord,
+  ModelExchangeRequest,
+  ModelExchangeResponse,
+  ModelExchangeSink,
+} from "./model-exchange.js";
 export { ToolCallIdAllocator, stripToolCallIdSuffix } from "./tool-call-ids.js";
 export {
   DEFAULT_CONTEXT_WINDOW,

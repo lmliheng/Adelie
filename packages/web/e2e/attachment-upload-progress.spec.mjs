@@ -117,6 +117,42 @@ test("a big attachment is uploaded on its own and lands in the scratchpad whole"
   expect((await stored.body()).length).toBe(FILE_MB * MB);
 });
 
+test("a very large attachment goes out in parallel slices", async ({ page }) => {
+  const sessionId = await setUp(page, "r_upload_multipart");
+  await page.goto(`/chat/${sessionId}`);
+  await expect(page.locator("textarea")).toBeVisible();
+
+  const slices = [];
+  page.on("request", (req) => {
+    if (req.method() === "PUT" && req.url().includes("/attachments/multipart/")) slices.push(req);
+  });
+
+  // 9MB: over the 8MB threshold, so it takes the chunked route — three 4MiB slices, the tail 1MB.
+  const size = 9 * MB;
+  const name = "huge.bin";
+  await page.locator('input[type="file"]:not([accept])').setInputFiles({
+    name,
+    mimeType: "application/octet-stream",
+    buffer: Buffer.alloc(size),
+  });
+  await expect(page.getByRole("button", { name: /^移除文件/ })).toBeVisible();
+  await page.getByPlaceholder(/输入消息/).fill("超大文件");
+  await page.getByRole("button", { name: "发送" }).click();
+
+  await expect(page.getByText(`附加文件：${name}`)).toBeVisible({ timeout: 60_000 });
+
+  // The bytes went out as slices of one upload, not as a single request.
+  const indexes = new Set(slices.map((req) => new URL(req.url()).pathname.split("/").at(-1)));
+  expect(indexes).toEqual(new Set(["0", "1", "2"]));
+
+  // …and reached the scratchpad whole.
+  const stored = await page.request.get(
+    `${BASE}/api/sessions/${sessionId}/scratchpad/${encodeURIComponent(name)}`,
+  );
+  expect(stored.status()).toBe(200);
+  expect((await stored.body()).length).toBe(size);
+});
+
 test("a small attachment still rides the request and shows up the same way", async ({ page }) => {
   const sessionId = await setUp(page, "r_upload_inline");
   await page.goto(`/chat/${sessionId}`);
