@@ -79,6 +79,7 @@ import type {
   MultipartUploadStartResponse,
   MessagingBindingsResponse,
   ModelBalanceResponse,
+  ModelExchangesResponse,
   ModelProtocolDetectResponse,
   ModelsResponse,
   ModelTestResponse,
@@ -1798,6 +1799,12 @@ router
       return empty();
     },
   )
+  // What the network panel asks for when a model row is opened: the request and response the
+  // server kept for that call. The demo runs no model, so the list is empty and the panel falls
+  // back to what the stream itself reported.
+  .get("/api/sessions/:sessionId/model-exchanges", (): ModelExchangesResponse => ({
+    exchanges: [],
+  }))
   .get("/api/sessions/:sessionId/goal", (): GoalResponse => ({ goal: null }))
   // The sidebar foot's 待做 block reads every open conversation. The demo starts the list empty
   // and keeps nothing: the PUT answers the list that was sent, so an edit lands visibly and a
