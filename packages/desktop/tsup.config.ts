@@ -7,10 +7,11 @@ import { buildGitDefine } from "../../scripts/build-git-stamp.mjs";
 import { ESM_CJS_BANNER } from "../../scripts/esm-cjs-banner.mjs";
 
 /**
- * Five self-contained bundles, no shared chunks: the shell itself, the server it forks as a
- * utilityProcess, the CLI its bin/ launchers start on the app's Electron runtime, and the two
- * modules scripts/build-assets.mjs imports (plain node, no Electron) to produce the rest of
- * the build — launcher.ts writes the launcher scripts, pty-payload.ts stages node-pty.
+ * Six self-contained bundles, no shared chunks: the shell itself, the server it forks as a
+ * utilityProcess, the ADB device bridge it forks beside it, the CLI its bin/ launchers start on
+ * the app's Electron runtime, and the two modules scripts/build-assets.mjs imports (plain node,
+ * no Electron) to produce the rest of the build — launcher.ts writes the launcher scripts,
+ * pty-payload.ts stages node-pty.
  *
  * The server and the CLI are bundled from their own packages' build output, so the app runs
  * exactly what an `npm install` of those packages would, linked into one file each.
@@ -30,6 +31,7 @@ export default defineConfig({
     "pty-payload": "src/pty-payload.ts",
     server: "../server/dist/index.js",
     penguin: "../cli/dist/penguin.js",
+    "device-bridge": "../device-adb/dist/bridge-bin.js",
   },
   format: ["esm"],
   target: "node24",

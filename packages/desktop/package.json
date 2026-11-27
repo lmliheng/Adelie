@@ -45,6 +45,7 @@
   "devDependencies": {
     "@adelie/cli": "workspace:*",
     "@adelie/core": "workspace:*",
+    "@adelie/device-adb": "workspace:*",
     "@adelie/server": "workspace:*",
     "@types/node": "^24.0.0",
     "electron": "^43.2.0",

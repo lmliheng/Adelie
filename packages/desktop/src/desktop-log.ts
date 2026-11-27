@@ -141,6 +141,12 @@ export function logServerOutput(stream: "stdout" | "stderr", chunk: string): voi
   sink?.output(stream, "[server] ", chunk);
 }
 
+/** The device bridge's output: same prefix rule as the server's, under its own label. */
+export function logBridgeOutput(stream: "stdout" | "stderr", chunk: string): void {
+  process.stdout.write(`[bridge] ${chunk}`);
+  sink?.output(stream, "[bridge] ", chunk);
+}
+
 /** Writes what is held and closes the file; the console keeps working. */
 export function stopDesktopLog(): void {
   sink?.close();

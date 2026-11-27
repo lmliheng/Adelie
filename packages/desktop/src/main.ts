@@ -95,7 +95,16 @@ import { webDistEntry, webDistFor } from "./web-dist.js";
 import { resolveTrayIcon, resolveWindowIcon } from "./app-icon.js";
 import { createBuiltinBrowserShell } from "./builtin-browser.js";
 import { installCliCommand, ensureCliCommand, currentCliInstallKind } from "./cli-install.js";
-import { logLine, logServerOutput, startDesktopLog, stopDesktopLog } from "./desktop-log.js";
+import {
+  logLine,
+  logBridgeOutput,
+  logServerOutput,
+  startDesktopLog,
+  stopDesktopLog,
+} from "./desktop-log.js";
+import { bridgeRestartDelayMs, bundledAdbPath, deviceBridgeEntryPath } from "./device-bridge.js";
+import { forkDeviceBridge } from "./device-bridge-process.js";
+import type { RunningDeviceBridge } from "./device-bridge-process.js";
 import { handleFolderAccessFrame } from "./folder-access.js";
 import type { FolderAccessFrameDeps } from "./folder-access.js";
 import { applyLoginShellEnv } from "./login-shell-env.js";
@@ -210,6 +219,10 @@ const launchedAtLogin = startedAtLogin(process.argv);
  */
 let startHidden = false;
 let server: EmbeddedServer | null = null;
+/** The ADB bridge for this data root, while its process is up (see openDeviceBridge). */
+let deviceBridge: RunningDeviceBridge | null = null;
+/** How many times the bridge has been restarted in a row; a run that stays up resets it. */
+let bridgeRestarts = 0;
 /** The live server child, for pushes that are not answers to one of its messages. */
 let relayChild: EmbeddedServer["child"] | null = null;
 /**
@@ -920,6 +933,9 @@ async function startServerAndWindow(dataRoot: string): Promise<void> {
   });
   server = started;
   appOrigin = started.origin;
+  // After the server is up: the bridge's socket belongs to it, and starting the bridge first
+  // would only exercise its reconnect backoff.
+  openDeviceBridge(dataRoot);
   wireShellRelay(started.child);
   // A run that stays up for a minute is healthy: reset the restart budget so a crash
   // days later starts a fresh 1s/2s/4s ladder instead of hitting the cap immediately.
@@ -958,6 +974,63 @@ async function handleServerExit(dataRoot: string, code: number): Promise<void> {
   }
 }
 
+/** The adb that travelled inside the installer, when this build carries one. */
+function bundledAdb(): string | null {
+  const candidate = bundledAdbPath(process.resourcesPath, process.platform);
+  return candidate !== null && fs.existsSync(candidate) ? candidate : null;
+}
+
+/**
+ * Starts the ADB bridge for this data root if it is not up. The bridge is what makes a phone on
+ * this machine visible to the server; it is optional, so a machine without adb gets a bridge that
+ * says so on the devices page rather than an error here. Idempotent: the server's own restart
+ * path runs through startServerAndWindow again, and the attach path calls it once more.
+ */
+function openDeviceBridge(dataRoot: string): void {
+  if (quitting || deviceBridge !== null) return;
+  const entry = deviceBridgeEntryPath(app.getAppPath());
+  if (!fs.existsSync(entry)) {
+    logLine(`[shell] device bridge not started: ${entry} is missing (build this package first)`);
+    return;
+  }
+  const fork = (): void => {
+    if (quitting) return;
+    deviceBridge = forkDeviceBridge({
+      appPath: app.getAppPath(),
+      dataRoot,
+      userDataDir: app.getPath("userData"),
+      name: os.hostname(),
+      bundledAdb: bundledAdb(),
+      log: (chunk, stream) => logBridgeOutput(stream, chunk),
+    });
+    // A run that stays up for a minute is healthy: the next death starts the ladder over.
+    const healthyTimer = setTimeout(() => {
+      bridgeRestarts = 0;
+    }, 60_000);
+    deviceBridge.child.on("exit", (code) => {
+      clearTimeout(healthyTimer);
+      deviceBridge = null;
+      if (quitting) {
+        logLine(`[shell] device bridge exited (code ${code})`);
+        return;
+      }
+      const wait = bridgeRestartDelayMs(bridgeRestarts);
+      bridgeRestarts += 1;
+      logLine(`[shell] device bridge exited (code ${code}); restarting in ${wait}ms`);
+      setTimeout(fork, wait);
+    });
+  };
+  fork();
+}
+
+/** Stops the bridge for good; a restart waiting on the ladder sees `quitting` and gives up. */
+function stopDeviceBridge(): void {
+  if (deviceBridge === null) return;
+  const running = deviceBridge;
+  deviceBridge = null;
+  running.child.kill();
+}
+
 async function boot(): Promise<void> {
   // Explicit PENGUIN_HOME wins; otherwise the release profile shares the CLI's data root
   // and the dev profile takes the repo's dev root (the rule, and why, live in app-identity.ts).
@@ -987,6 +1060,9 @@ async function boot(): Promise<void> {
     const landing = `${appOrigin}/`;
     signInGuard.tried(landing);
     createWindow(landing);
+    // The attached server may be any build; when it carries the devices module the bridge works
+    // exactly as it does for the embedded one, and when it does not, the bridge retries quietly.
+    openDeviceBridge(dataRoot);
     return;
   }
   await startServerAndWindow(dataRoot);
@@ -1044,6 +1120,8 @@ if (!app.requestSingleInstanceLock()) {
   // then let the quit proceed. Attach mode has no child to stop.
   app.on("before-quit", (event) => {
     quitting = true;
+    // The bridge holds nothing worth a graceful stop: kill it before the server it talks to goes.
+    stopDeviceBridge();
     // The icon goes as soon as the app is on its way out, rather than lingering through the
     // graceful server stop; nulling it keeps the second pass (after the stop) from destroying
     // an already destroyed tray.

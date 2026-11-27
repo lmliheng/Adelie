@@ -387,6 +387,9 @@ importers:
       '@adelie/core':
         specifier: workspace:*
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
+      '@adelie/device-adb':
+        specifier: workspace:*
+        version: link:../device-adb
       '@adelie/server':
         specifier: workspace:*
         version: file:packages/server(supports-color@10.2.2)
