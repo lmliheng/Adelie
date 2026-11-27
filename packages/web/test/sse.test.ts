@@ -53,6 +53,17 @@ function greet(source: FakeEventSource, id: string): void {
 /** How a stream dies on arrival: the connection opens and the body never arrives. */
 const silence = (ms: number) => vi.advanceTimersByTime(ms);
 
+/**
+ * A connection's query as the server reads it: the id it resumes from, and the request id the
+ * panel gave this row — the server's write record is keyed by the latter, so every connection
+ * carries one (event-stream tab, services/stream-writes.ts).
+ */
+function expectConnection(source: FakeEventSource, lastEventId: string | null): void {
+  const params = new URLSearchParams(source.url.slice(source.url.indexOf("?") + 1));
+  expect(params.get("lastEventId")).toBe(lastEventId);
+  expect(params.get("requestId")).toMatch(/^\d+-[0-9a-z]+$/);
+}
+
 const live = (sources: FakeEventSource[]) =>
   sources.filter((s) => s.readyState !== FakeEventSource.CLOSED);
 
@@ -64,12 +75,12 @@ it("a stream silent for 50 s is reopened, once, from the newest event id seen", 
   vi.advanceTimersByTime(49_000);
   expect(sources).toHaveLength(1);
   vi.advanceTimersByTime(1_000);
-  expect(sources[1]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-2");
+  expectConnection(sources[1]!, "e-2");
   expect(live(sources)).toEqual([sources[1]]);
 
   sources[1]!.emit("ping");
   vi.advanceTimersByTime(50_000);
-  expect(sources[2]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-2");
+  expectConnection(sources[2]!, "e-2");
   expect(live(sources)).toEqual([sources[2]]);
 });
 
@@ -90,7 +101,7 @@ it("becoming visible past the window reopens the stream at once, though no timer
   setVisibility("hidden");
   expect(sources).toHaveLength(1);
   setVisibility("visible");
-  expect(sources[1]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-1");
+  expectConnection(sources[1]!, "e-1");
   expect(live(sources)).toEqual([sources[1]]);
 });
 
@@ -107,7 +118,7 @@ it("a connection that delivers nothing is reopened at the deadline, and two of t
   silence(9_000);
   expect(sources).toHaveLength(1);
   silence(1_000);
-  expect(sources[1]!.url).toBe("/api/sessions/s1/stream");
+  expectConnection(sources[1]!, null);
 
   silence(10_000);
   // The second silent connection is the last: nothing is left open, the caller is told once,
@@ -156,10 +167,10 @@ it("a stalled stream keeps resuming from the newest id it ever saw", () => {
   const { sources } = subscribe();
   greet(sources[0]!, "e-5");
   silence(50_000); // the greeted connection goes quiet: one immediate reopen
-  expect(sources[1]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-5");
+  expectConnection(sources[1]!, "e-5");
   silence(10_000 + 10_000); // two connections in a row with nothing on them
   silence(60_000); // the probe
-  expect(sources[3]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-5");
+  expectConnection(sources[3]!, "e-5");
 });
 
 it("every frame received is recorded, once recording is on", () => {

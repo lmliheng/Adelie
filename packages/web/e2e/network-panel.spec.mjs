@@ -138,7 +138,8 @@ test("a row opens its detail inside the panel, tabs and back included", async ({
   await dock.getByRole("button", { name: "请求", exact: true }).click();
   await expect(dock.getByText("请求头")).toBeVisible();
 
-  // What the stream delivered: the browser's side is counted, the server's is still a placeholder.
+  // Only a stream connection is recorded server-side; on any other row both sides stay as they
+  // were (the browser's count, and "not captured" for what the server wrote).
   await dock.getByRole("button", { name: "事件流", exact: true }).click();
   await expect(dock.getByText("服务端写出", { exact: true })).toBeVisible();
   await expect(dock.getByText("未采集").first()).toBeVisible();
@@ -147,6 +148,32 @@ test("a row opens its detail inside the panel, tabs and back included", async ({
   await dock.getByRole("button", { name: "返回" }).click();
   await expect(dock.getByRole("button", { name: "本次回复", exact: true })).toBeVisible();
   await expect(dock.getByText("记录中")).toBeVisible();
+});
+
+test("a stream row's events tab reads the server's own frame record", async ({ page }) => {
+  await openSessionWithOneTurn(page);
+
+  await page.locator('[data-net-turn="1"]').click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+
+  // The Session's stream: the connection this page opened, which it names in the URL
+  // (api/sse.ts) so the server can record what it writes on it.
+  await dock
+    .getByRole("button")
+    // The row's text continues past the path (its frame count and its duration), so no `$`.
+    .filter({ hasText: /\/api\/sessions\/.+\/stream/ })
+    .first()
+    .click();
+  await dock.getByRole("button", { name: "事件流", exact: true }).click();
+
+  // The count is the server's own — a number, not the placeholder the panel used to draw there.
+  const wrote = dock.getByText("服务端写出", { exact: true }).locator("..");
+  await expect(wrote).toContainText(/\d+ 帧/, { timeout: 15_000 });
+  await expect(wrote).not.toContainText("未采集");
+  // And the frames themselves: the snapshot this subscription opened with is frame #1.
+  await expect(dock.getByText("写出的帧（新的在上）")).toBeVisible();
+  await expect(dock.getByText("#1", { exact: true })).toBeVisible();
 });
 
 test("a model row the server no longer keeps says so instead of (empty)", async ({ page }) => {

@@ -93,6 +93,7 @@ import type {
   MeResponse,
   MessagesResponse,
   ModelExchangesResponse,
+  StreamWritesResponse,
   MessagingBindingsResponse,
   MessagingChannel,
   MessagingTestMessageResponse,
@@ -1492,6 +1493,15 @@ export const listModelExchanges = (
     `/api/sessions/${encodeURIComponent(sessionId)}/model-exchanges`,
     { query: { after: options.after, limit: options.limit } },
   );
+
+/**
+ * What the server wrote on ONE SSE connection of this Session, by the id the page gave it when
+ * it opened the stream (api/sse.ts). `record: null` when nothing was captured under that id.
+ */
+export const streamWrites = (sessionId: string, requestId: string) =>
+  apiFetch<StreamWritesResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/stream-writes`, {
+    query: { requestId },
+  });
 
 /** Panel message to one subagent child (#272) — a user input on the child, whatever its state: steered mid-run, started on an idle child, resumed when the released session was revived (the child runs at its own Session's thinking level; pin it with patchSession). 404 subagent_gone when nothing can be revived, 409 subagent_busy when the child cannot take it right now. */
 export const messageSubagent = (sessionId: string, childSessionId: string, text: string) =>

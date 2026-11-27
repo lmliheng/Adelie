@@ -193,9 +193,14 @@ function subscribe(
     // A fresh connection is a fresh row in the network panel (the previous one's frame count
     // is settled here).
     nextNetRow();
-    source = new EventSource(
-      lastEventId ? `${url}?lastEventId=${encodeURIComponent(lastEventId)}` : url,
-    );
+    // Name the connection for the server's own write record (services/stream-writes.ts): the
+    // panel's 事件流 tab reads back what was written under this id and sets it beside the frames
+    // this page counted. A parameter, not a header — EventSource can set neither.
+    const params = new URLSearchParams();
+    if (lastEventId) params.set("lastEventId", lastEventId);
+    if (net !== null) params.set("requestId", net.requestId);
+    const query = params.toString();
+    source = new EventSource(query === "" ? url : `${url}?${query}`);
     source.onmessage = onMessage;
     source.addEventListener("server_event", onServerEvent);
     source.addEventListener("ping", onPing);

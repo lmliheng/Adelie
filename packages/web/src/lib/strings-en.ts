@@ -469,7 +469,19 @@ export const en: Strings = {
     browserGot: "Browser received",
     notCaptured: "not captured",
     eventsHint:
-      "The received side comes from this page's record; the written side waits on the server's write capture, in a later version.",
+      "The received side comes from this page's record; the written side comes from the server's own frame record (only for connections the page named — anything else still reads “not captured”).",
+    streamWriteLoading: "Reading the server's frame record…",
+    streamWriteMissing:
+      "The server has no frame record for this connection (it keeps the newest 50, and a restart empties it).",
+    streamWriteFailed: (reason: string) => `Could not read the frame record: ${reason}`,
+    streamWriteGapServerMore: (written: number, received: number) =>
+      `The server wrote ${written} frames; the browser received ${received}.`,
+    streamWriteGapPageMore: (written: number, received: number) =>
+      `The server's record holds only ${written} frames while the browser received ${received} (earlier frames may be gone from it).`,
+    streamWritePartial: (dropped: number) =>
+      `The earlier ${dropped} frames are no longer on the server.`,
+    streamWriteOpen: "connection still writing",
+    streamWriteRows: "Written frames (newest first)",
     relatedEmpty: "No other requests in this turn.",
     exportJson: "Export JSON",
     exported: "Exported",

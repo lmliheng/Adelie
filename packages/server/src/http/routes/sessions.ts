@@ -52,6 +52,7 @@ import type {
   SessionInfo,
   SessionTodoItem,
   SessionTodosResponse,
+  StreamWritesResponse,
 } from "../../api/types.js";
 import { compactionThresholdFor } from "../../services/context-breakdown.js";
 import { decodeCursor } from "../../services/message-window.js";
@@ -142,6 +143,7 @@ import {
   writeMultipartChunk,
 } from "../../services/multipart-uploads.js";
 import { listModelExchanges, MODEL_EXCHANGE_CAP } from "../../services/model-exchange-log.js";
+import { readStreamWrites } from "../../services/stream-writes.js";
 import {
   INLINE_IMAGE_MAX_BYTES,
   INLINE_IMAGE_MAX_MB,
@@ -1540,6 +1542,8 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     return sseEndpoint(c, channel, {
       initialEvents,
       revocation: streamRevocation(c, c.var.user, deps),
+      // The write record is keyed by Session and the page's own `requestId` (http/sse.ts).
+      sessionId: row.sessionId,
     });
   });
 
@@ -2102,6 +2106,19 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     return c.json({
       exchanges: listModelExchanges(row.sessionId, after, limit),
     } satisfies ModelExchangesResponse);
+  });
+
+  // The network panel's 事件流 tab, server side: what Adelie wrote on one SSE connection of this
+  // Session (services/stream-writes.ts). The page names each connection with a `requestId`
+  // query parameter when it opens the stream; this answers with that connection's frames. A
+  // null record is the honest answer for a stream nobody named (the CLI) or one the ring no
+  // longer keeps — not an error, and the panel says which.
+  app.get("/:sessionId/stream-writes", (c) => {
+    const row = resolveSession(c);
+    const requestId = c.req.query("requestId") ?? "";
+    return c.json({
+      record: requestId === "" ? null : readStreamWrites(row.sessionId, requestId),
+    } satisfies StreamWritesResponse);
   });
 
   app.get("/:sessionId/traces", async (c) => {

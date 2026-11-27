@@ -50,7 +50,7 @@ import {
 import type { NetRequest } from "../../api/net-log";
 import { formatBytes, formatTime, humanizeDuration } from "../../lib/format";
 import { writeClipboard } from "../../lib/clipboard";
-import { listModelExchanges } from "../../api/endpoints";
+import { listModelExchanges, streamWrites as fetchStreamWrites } from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { toneDot, toneInk } from "../../lib/tone";
@@ -59,6 +59,9 @@ import type { DockPanelBodyProps } from "../dock/panel-registry";
 import { useChatDock } from "../chat/chat-dock-context";
 import { SseFrameList } from "../traces/sse-frame-list";
 import { pickModelExchange } from "./model-exchange-pick";
+import { viewStreamWrites } from "./stream-write-view";
+import type { StreamWriteView } from "./stream-write-view";
+import type { StreamWritesRecord } from "@adelie/server/api";
 import {
   filterNetEntries,
   groupByTurn,
@@ -122,6 +125,25 @@ function HeaderTable({
         </div>
       ))}
     </dl>
+  );
+}
+
+/** The server's frames as a list: offsets from the connection's open (two clocks, so no absolute times). */
+function WrittenFrames({ view }: { view: StreamWriteView }) {
+  if (view.rows.length === 0) {
+    return <p className="text-xs text-fg-subtle">{S.network.notCaptured}</p>;
+  }
+  return (
+    <ul className="max-h-48 overflow-y-auto rounded-md border border-line-muted">
+      {view.rows.map((row) => (
+        <li key={row.seq} className="flex items-baseline gap-2 px-2 py-0.5 font-mono text-xs">
+          <span className="w-14 shrink-0 text-fg-subtle">+{humanizeDuration(row.offsetMs)}</span>
+          <span className="shrink-0 text-fg">{row.event}</span>
+          <span className="shrink-0 text-fg-subtle">{formatBytes(row.bytes)}</span>
+          <span className="shrink-0 text-fg-subtle">#{row.seq}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -497,6 +519,14 @@ function RequestRow({ entry, onOpen }: { entry: NetRequest; onOpen: () => void }
 type ModelBodyNote =
   { kind: "loading" } | { kind: "missing" } | { kind: "failed"; reason: string } | null;
 
+/** What the detail knows about a stream row's server-side record before it is in hand. */
+type StreamWritesNote =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "missing" }
+  | { kind: "failed"; reason: string }
+  | { kind: "ready"; record: StreamWritesRecord };
+
 /** The in-panel detail view (opened by a row; ← returns to the list). */
 function NetDetail({
   entry,
@@ -570,6 +600,62 @@ function NetDetail({
       cancelled = true;
     };
   }, [needsModelBodies, entry, sessionId]);
+
+  // A stream row's other half: what the server wrote, from its own record
+  // (services/stream-writes.ts), under the id this page gave the connection when it opened it
+  // (api/sse.ts). Read when the events tab shows — the only place that draws it — and re-read
+  // while the connection is still open: the number a stuck stream needs is the one that keeps
+  // moving. A null record means nothing was captured (the ring let it go, or the server
+  // restarted): retried twice for a stream that has only just been opened, then left alone.
+  const [writes, setWrites] = useState<StreamWritesNote>({ kind: "idle" });
+  const readsWrites = tab === "events" && entry.kind === "stream" && sessionId !== null;
+  useEffect(() => {
+    if (!readsWrites) return;
+    const sid = sessionId as string;
+    const id = entry.requestId;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let misses = 0;
+    const read = () => {
+      void fetchStreamWrites(sid, id)
+        .then(({ record }) => {
+          if (cancelled) return;
+          if (record === null) {
+            misses += 1;
+            setWrites({ kind: "missing" });
+            if (misses < 3) timer = setTimeout(read, 3000);
+            return;
+          }
+          setWrites({ kind: "ready", record });
+          if (record.endedAt === null) timer = setTimeout(read, 3000);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setWrites({ kind: "failed", reason: apiErrorText(err) });
+        });
+    };
+    setWrites({ kind: "loading" });
+    read();
+    return () => {
+      cancelled = true;
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [readsWrites, entry.requestId, sessionId]);
+  const writeView =
+    writes.kind === "ready" ? viewStreamWrites(writes.record, entry.frameCount) : null;
+  const writtenText = ((): string => {
+    if (entry.kind !== "stream" || sessionId === null) return S.network.notCaptured;
+    switch (writes.kind) {
+      case "idle":
+      case "loading":
+        return S.network.streamWriteLoading;
+      case "missing":
+        return S.network.streamWriteMissing;
+      case "failed":
+        return S.network.streamWriteFailed(writes.reason);
+      case "ready":
+        return S.network.frames(viewStreamWrites(writes.record, entry.frameCount).written);
+    }
+  })();
 
   const bodyEmpty =
     modelBodies === null
@@ -704,7 +790,7 @@ function NetDetail({
             <div className="rounded-md border border-line-muted">
               <div className="flex items-center justify-between px-2.5 py-1 text-xs">
                 <span className="text-fg-muted">{S.network.serverWrote}</span>
-                <span className="text-fg-subtle">{S.network.notCaptured}</span>
+                <span className="text-fg-subtle">{writtenText}</span>
               </div>
               <div className="flex items-center justify-between border-t border-line-muted px-2.5 py-1 text-xs">
                 <span className="text-fg-muted">{S.network.browserGot}</span>
@@ -715,6 +801,34 @@ function NetDetail({
                 </span>
               </div>
             </div>
+            {writeView !== null && (
+              <>
+                {/* Only a complete record can say something about a difference; a partial
+                    record and an open row stay silent (see stream-write-view.ts). */}
+                {writeView.gap === "server-more" && (
+                  <p className={`text-xs ${toneInk.danger}`}>
+                    {S.network.streamWriteGapServerMore(writeView.written, entry.frameCount ?? 0)}
+                  </p>
+                )}
+                {writeView.gap === "page-more" && (
+                  <p className="text-xs text-fg-muted">
+                    {S.network.streamWriteGapPageMore(writeView.written, entry.frameCount ?? 0)}
+                  </p>
+                )}
+                {writeView.dropped > 0 && (
+                  <p className="text-xs text-fg-muted">
+                    {S.network.streamWritePartial(writeView.dropped)}
+                  </p>
+                )}
+                {!writeView.ended && (
+                  <p className="text-xs text-fg-subtle">{S.network.streamWriteOpen}</p>
+                )}
+                <p className="pt-1 text-xs font-medium text-fg-muted">
+                  {S.network.streamWriteRows}
+                </p>
+                <WrittenFrames view={writeView} />
+              </>
+            )}
             <p className="text-xs text-fg-subtle">{S.network.eventsHint}</p>
             {entry.kind === "stream" && sessionId !== null && (
               <SseFrameList sessionId={sessionId} active={active} />

@@ -10,8 +10,9 @@
  * than the server's heartbeat. Reading down it separates the two failures a quiet conversation
  * has: nothing arriving (frames are missing) from nothing being written (frames are there).
  *
- * It shows the receiving side only. What the server wrote is not visible from here — a page can
- * prove that a frame arrived, never that one was never sent.
+ * It shows the receiving side only — a page can prove that a frame arrived, never that one was
+ * never sent. What the server wrote is read from the server's own record by the network panel's
+ * 事件流 tab (features/network/stream-write-view.ts), for connections the page named.
  *
  * Live while it shows: frames land as the run streams, so the list re-renders on the recorder's
  * own notifications. A hidden dock tab (or a switched-off toggle) records nothing to the screen

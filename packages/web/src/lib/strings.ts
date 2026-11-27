@@ -544,7 +544,20 @@ export const zh = {
     serverWrote: "服务端写出",
     browserGot: "浏览器收到",
     notCaptured: "未采集",
-    eventsHint: "浏览器收到的一侧来自本页记录；服务端写出的一侧要等写帧采集点，随后续版本补上。",
+    eventsHint:
+      "浏览器收到的一侧来自本页记录；服务端写出的一侧来自服务端的写帧采集（只对页面自己命名的连接有效，其余仍显示「未采集」）。",
+    /** The server's record of this connection: fetching it, the three answers, and the frames. */
+    streamWriteLoading: "正在向服务器取写帧记录…",
+    streamWriteMissing: "服务器上没有这条连接的写帧记录（只保留最近 50 条连接，重启即清空）。",
+    streamWriteFailed: (reason: string) => `取不到写帧记录：${reason}`,
+    /** Written vs received: only says something when neither side is partial. */
+    streamWriteGapServerMore: (written: number, received: number) =>
+      `服务端写了 ${written} 帧，浏览器收到 ${received} 帧。`,
+    streamWriteGapPageMore: (written: number, received: number) =>
+      `服务端的记录里只有 ${written} 帧，浏览器收到 ${received} 帧（更早的帧可能已不在服务端）。`,
+    streamWritePartial: (dropped: number) => `更早的 ${dropped} 帧没有留在服务端。`,
+    streamWriteOpen: "连接仍在写",
+    streamWriteRows: "写出的帧（新的在上）",
     /** Nothing recorded for this Session yet, said inside the detail's related tab. */
     relatedEmpty: "这一回合没有其它请求。",
     /** Export. */
