@@ -4064,6 +4064,13 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       解析真实 JSX，`bg-gray-200` 元素带文字或表达式子节点即失败，无字的痕迹按文件列进例外并写明理由，
       列了却不再出现也失败。反证：涂鸦浅色下把活动分组换回描边档，实测对比度 **1.46**，改后 **14.82**。
       见「第三百五十八轮」一节。
+- [x] **7.227 网络面板的模型行：取的过程中、取不到、本来就没有，三件事分开说**（**2026-11-27
+      第三百五十九轮**落地，提交见「已完成的轮次」；`packages/web` 1 个新纯逻辑文件 ＋ 面板 1 个 ＋ 两本
+      词典各 3 句 ＋ 新单测 4 条 ＋ `network-panel.spec.mjs` 多 1 条 ＋ changelog 一对 —— **不碰接口、
+      不动数据、无新依赖**）：模型行的请求体与响应体是打开该行时向服务端取的（环形 100 条），此前取不到
+      就什么也不留，两栏落到与「真的发了空请求」一样的 `（空）`。现在三态各有各的话（正在取 / 服务器上
+      没有这次调用的记录 / 取不到 ＋ 服务端那句话），模型行的空请求头表写「未采集」。反证：把面板退回
+      `HEAD`、重建后跑新 spec → **1 failed**。见「第三百五十九轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7321,7 +7328,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-27 | 7.224 | **会折行的提示条，色调标记留在第一行**（上游 `08ee6d4d2` `#1897` 移植，照语义落、不是合分支；13 文件 / +101 −15，其中 `packages/ui` 源码 5 个（`components/feedback/notice/notice.tsx` 的开头块 `data-slot="lead"` + `items-start` 与 `icon` 槽 `min-h-[1lh]`、`notice-strip.tsx` 与 `hooks.ts` 的槽说明、`themes/modern.css` 与 `geek.css` 的 `::before` 挂到 lead 块首行）、`packages/ui-gallery` 3 个（提示板多行示例 + 中英文案 `wrappedBody`）、用例 3 个、changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：`Notice` 原来把标记在整个盒子居中，多行提示在现代主题下圆点停在第三行旁边、极客主题下 `[WARN]` 标签停在中间；现在标记随首行、横幅的落在条带内边距下，单行提示位置不变。**本地化**：本树主题是旧的单文件 css（上游已拆 recipes 目录），按语义重写那两段选择器；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与兼容性 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；`@adelie/ui-gallery` typecheck **rc=0**；`oxlint` **0 警告 0 错误**（2722 文件）；13 个改动文件 `prettier --check` 干净；`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **220 / 3215 / 6 跳过** · web **368 / 4118 / 2 跳过** · hmr 无测试文件；**真界面两态（组件画廊 7372，Playwright + 本机 chromium，数据不落仓库）**：同一探针在 `lib.html?topic=notices` 里量多行示例的标记中心与首行中心 —— 现代主题改前偏 **30px**、改后 **1px**；极客主题改前偏 **28px**、改后 **1px**；默认（github）主题改后 **1px**、圆点在第一行；单行 inline 提示两态标记中心都在盒中心（现代 77/77、极客 71/71）；两态三主题 console **0 error**；截图 `wrapped-{modern,geek,github}.png` 与 `measure-*.json` 在 scratchpad · 端口只用 7372，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `240ced3d2` |
 | 2026-11-27 | 7.225 | **大文件改成四路分片并行上传；网络面板的「模型」行能看到发给服务商的请求与响应**（**2026-11-27 第三百五十七轮**落地，用户点单：先报上传慢、再指明要看服务端发给模型服务商的请求体与响应体；core 3 文件（新 `llm/model-exchange.ts` + `generative-model.ts` 埋点）、server 7 文件（新 `services/multipart-uploads.ts`、新 `services/model-exchange-log.ts`、四条分片路由 + 一条查询路由、`app.ts` 装 sink）、web 8 文件、`ui-gallery` mock 补四条；**无数据库迁移、无新依赖**）：4MB × 四路、服务端预建稀疏文件按偏移写、全片到齐才 `link` 成正式名、单片失败只重传该片；模型记录环形 100 条、请求与响应各截 256KB、`data:` 长串换占位符、打开该行才拉取（用 `request_end` 的服务器时间戳配对） | 见「第三百五十七轮」一节（core/server/web/ui-gallery `tsc` rc=0；全仓 `oxlint` 0/0（2731 文件）；新单测 21 条全过；e2e 附件 3 条 + 网络面板 4 条全过；临时实例读到 3 条模型记录） | `a57ffda28`、`e8ace70d7`（演示站补上记录接口） |
 | 2026-11-27 | 7.226 | **一族「拿主题描边档当填充」的控件清掉，补一条守卫用例**（**2026-11-27 第三百五十八轮**落地，接着上一轮被中断的在途改动收尾；`packages/web` 12 个源码文件（模型选择器的活动厂商、插件页的分类选中、轨迹文件标签与传输开关、提及 chip 与输入框提及高亮、频道行「加入」按钮与折叠栏未读角标、组织切换器悬停与角标、路径胶囊、成员头像、目标条状态标、终端键帽）＋ 新 `test/outline-rung-fill.test.ts`（AST 扫描，带无痕痕迹例外表）＋ changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：导入主题的调色板桥把 `bg-gray-200` 系到 `--ui-line`，手绘涂鸦下描边 `#3f3a34` 配墨 `#332f2a`，这些控件是深底深字；改用 `bg-fill-neutral` / `bg-fg/10` / `bg-fg/7` 与 `text-fg`，各自的 `dark:bg-gray-700/800` 去掉；另修两处深色下把 `gray-200` 当字色（桥把它映到描边色，字偏暗）与一处折叠栏 `bg-gray-300` 角标 | 见「第三百五十八轮」一节（六包 `typecheck` rc=0；`oxlint` 改动 13 文件 0/0；`prettier --check` 与 `git diff --check` 干净；五包单测 core 1464 / ui 1119 / cli 568 / server 3228 / web 4129 全绿（web 新守卫 3 条）；真服务 + 真浏览器四组合：模型选择器活动分组、插件页分类选中、轨迹文件标签、提及 chip、折叠栏未读角标，涂鸦浅 14.82 / 10.61 / 12.19、涂鸦深 9.9 / 7.68、默认两档 10.4–16.4，console 0 error；反证 1.46） | 见本行提交 |
-
+| 2026-11-27 | 7.227 | **网络面板的模型行：取的过程中、取不到、本来就没有，三件事分开说**（**2026-11-27 第三百五十九轮**落地；`packages/web` 新纯逻辑 `features/network/model-exchange-pick.ts`（`pickModelExchange` ＋ `MODEL_EXCHANGE_MATCH_MS`）、`network-panel.tsx`（`ModelBodyNote` 三态、`BodyBlock` / `HeaderTable` 的 `empty` 参数、详情按行 id 挂载）、两本词典各 3 句、新单测 4 条、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **不碰接口、不动数据、无新依赖**）：模型行取不到请求体 / 响应体时，过去三栏落到与「真的发了空请求」一样的 `（空）`；现在「正在取」/「服务器上没有这次调用的记录（只保留最近 100 次）」/「取不到 ＋ 服务端那句话」三句分开，模型行的空请求头表写「未采集」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；全仓 `oxlint` **0 警告 0 错误**（2732 文件）；8 个改动文件 `prettier --check` 干净；`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **371 / 4130 / 2 跳过**（+1 文件 / +4 条即本笔）；**新单测 4 passed**；`network-panel.spec.mjs` **5 passed**（含新用例）；**反证**：面板退回 `HEAD`、重建后新用例 **1 failed**；真浏览器四态探针（找到 / 正在取 / 没有记录 / 被拒）＋ 英文窗口各一态，读到的正是这四句话，两态 console 只有既有的 `GET …/machines` 403、无 pageerror | `b060e0a10` |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36036,3 +36043,101 @@ console / pageerror 四组合全空。**反证**：涂鸦浅色下把活动厂�
 ### 提交
 
 - 代码与守卫一笔、台账与 changelog 另起一笔。
+## 第三百五十九轮：网络面板的模型行，取不到内容时不再说「（空）」（2026-11-27，条目 7.227）
+
+**开工自检**：`git status --short` 干净，分支 `main`，本地 HEAD `e48375a8e`；`git fetch origin` 经 https
+一次即通，`HEAD..origin/main` 为 0，`git merge --ff-only` 报 `Already up to date`。开工前查了 HEAD 那次
+提交的 CI：22 个 job **全绿**。没有切分支、没碰 `legacy/main`、没推 upstream。
+
+**让号**：开工时按 `e48375a8e` 写的是 7.226 / 第三百五十八轮；收尾推送被拒（remote 上多了三笔：另一条线
+的第三百五十八轮 —— 一族「拿描边档当填充」的控件，条目 7.226，`3d684c504` `f663c1e53` `12aeea957`）。
+按台账惯例把号让给它：本轮改记 **7.227 / 第三百五十九轮**，代码两笔 `git rebase origin/main` 摘到
+`12aeea957` 上（只有本文件冲突，两处的清单条目与表行都保留、自己的改号）。
+
+**选活**：待办里第一个未勾选的仍是 **2.2c**，它「还差什么」的四条这一轮一条都动不了（写侧在桌面壳、
+部署单元属发布动作、桌面壳自己的开关同前、`packages/docs/**` 与 `changelog/**` 留到发布期）；3.5 要用户
+拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 / 5.10 要拍板；第 7 节到 7.225 全勾。于是照前几轮
+的路先量上游：`/root/penguin-harness` 这个 clone 已经**不是 git 仓库**（目录还在、里面空了），改按 URL
+现拉上游 `main` 到 `refs/adelie-tmp/upstream-main-probe-1127`（尖端 `08ee6d4d2`）。上一轮记的头是
+`70fb5f318`，之后新推 **5 笔**，逐笔量过：`376a5340a`（落地页）、`9b5d376e2`（上游开发技能文档）是上游
+自己的文档面（本仓不取）；`08ee6d4d2`（`#1897` 提示条标记随首行）**第三百五十六轮已经落过**（7.224）；
+`fdf56199c`（App Center 导航行）要本树没有的 `packages/web/src/web-app/sidebar/`；`9857854e1`（不可达
+机器上的对话）要 `machines/history-sync.ts` 一整套 —— 两笔都缺前置。另核了上一轮留给下一轮挑的
+`6097cab0c`（插件安装失败的错误行）：它改的 `packages/server/src/plugin/install.ts` 与
+`plugin-source-settings.test.ts` 本树都不存在（第三百五十三轮已记过，本轮复核仍是这个结论）。
+
+于是取上一轮**自己那一笔**留下的缺口（7.225 的模型行）：`requestBody === null` 时那两栏落到 `（空）`。
+
+**为什么它是真的**：真服务端 + 真浏览器里量出来的，不是推想。
+
+1. `BodyBlock` 的「没有文本」只有一种说法 `S.network.noBody`（`（空）`），而模型行的请求体与响应体
+   **不在这张页面上** —— 它要打开该行时向服务端取（环形 100 条，`services/model-exchange-log.ts`）。
+2. 取不到时旧代码 `.catch(() => {})`、取到空时 `return`，都没有留下任何字：于是「取的过程」「服务端已经
+   没有这条记录」「这次请求本身被拒」和「真的发了空请求」四种情形在屏幕上**逐字相同**。
+3. 改前实测（同一份探针，`model-exchanges` 分别桩成延迟 3 秒、空列表、500）：三态下「请求体」都是 `（空）`；
+   「请求头」也是 `（空）` —— 而模型调用是服务端发的，这一页从没看见它的请求头。
+
+**做了什么**（`packages/web` 1 个新纯逻辑 ＋ 面板 1 个 ＋ 两本词典各 3 句 ＋ 新单测 4 条 ＋ 已有 spec 多
+1 条 ＋ changelog 一对；**不碰接口、不动数据、无新依赖**）：
+
+- `packages/web/src/features/network/model-exchange-pick.ts`（新）：把「哪一条记录是这一行」从面板的
+  `useEffect` 里提出来 —— `pickModelExchange(exchanges, endedAt)` 取结束时间最近的一条，`5_000` 从字面量
+  升成 `MODEL_EXCHANGE_MATCH_MS`；窗口外的记录一定是别的调用（多步回合一回合就有几次），宁可不填也不
+  把别人的提示词画成这一行的。
+- `packages/web/src/features/network/network-panel.tsx`：详情里记这次取的结果 `ModelBodyNote`
+  （`loading` / `missing` / `failed{reason}`），`BodyBlock` 与 `HeaderTable` 多一个 `empty` 参数说明这张
+  空表在这里意味着什么；模型行的请求头 / 响应头空表写 `未采集`；详情按行 id 挂载（`key={open.id}`），
+  换一行时上一行的答案不会跟过来。
+- `packages/web/src/lib/strings{,-en}.ts`：`modelBodyLoading` / `modelBodyMissing` / `modelBodyFailed(reason)`。
+- `packages/web/test/model-exchange-pick.test.ts`：4 条 —— 取自己那一刻、窗口内两条时取更近的、窗口外与
+  空环返回 null、窗口两端含与不含。
+- `packages/web/e2e/network-panel.spec.mjs` 多一条真浏览器用例：把 `model-exchanges` 答成空列表，打开模型行
+  的「请求」页，读到的必须是「服务器上没有这次调用的记录（模型调用只保留最近 100 次）。」、`（空）` 计数为 0、
+  请求头那栏是「未采集」。
+- 没有碰 `packages/desktop`、没有切版本号、没有发 npm / 安装包。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 全仓 `oxlint` **0 警告 0 错误**（2732 文件）；8 个改动文件 `prettier --check` 干净（首跑 4 个要 `--write`
+  一次，复检通过）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119 通过** · core **70 / 1464 / 6 跳过** ·
+  cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **371 / 4130 / 2 跳过**（相对上一轮台账的
+  368 / 4118，多出的 2 文件是第三百五十七轮之后的提交，本笔只有 1 文件 / 4 条）。
+- **新单测 4 passed**（`test/model-exchange-pick.test.ts`）。
+- **`network-panel.spec.mjs` 5 passed**（2.6 s + 2.6 s + 2.9 s + 2.6 s + 2.5 s；真服务端 8992 + mock 模型
+  8972 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r358`）。
+- **反证（改前产物）**：`network-panel.tsx` 退回 `HEAD`（新模块与两本词典留着，它们只是新增）、重建
+  `packages/web/dist`，跑新那条用例 → **1 failed**，红在找不到那句「服务器上没有这次调用的记录…」；
+  恢复后再跑 → **5 passed**。
+- **真浏览器四态探针**（临时 `zz-probe-r358*.spec.mjs`，跑完已删；`model-exchanges` 分别桩成真实、延迟
+  3 秒、空列表、500）：改前四态的「请求体」都是 `（空）`、请求头也是 `（空）`；改后分别是
+  `正在向服务器取这次调用的内容…` / `服务器上没有这次调用的记录（模型调用只保留最近 100 次）。` /
+  `取不到这次调用的内容：请求失败，请稍后重试`，请求头一律 `未采集`，而记录真的取到的那一态照旧是
+  含 `"messages"` 的请求体。英文窗口（`localStorage` 的 `penguin.lang = en`）读到
+  `The server has no record of this call (it keeps the last 100 model calls).` /
+  `Request headers: not captured`，`<html lang>` 是 `en`。截图 `r358/{missing,inflight,failed,missing-en}.png`
+  肉眼看过（那句话在「请求体」标题下面、面板布局没被挤动）；两态 console 只有既有的
+  `GET …/machines` 403（成员读机器列表，按设计），pageerror **0 条**。
+- 端口只用 8972 / 8992（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r358`，探针 / 截图都在 scratchpad 的 `r358/` 下（`packages/web/dist`、
+  `test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 上一轮那四笔上游候选（`f5928243e` / `c46f48ea0` / `5b5772c59` / `c42a54fea`）各自缺的上游子系统仍在，
+  不是一轮的量；`6097cab0c` 本树没有前置，本轮复核过，别再量它。
+- **环形够不到的那些行仍然只有一个答案**：现在的 `missing` 说「只保留最近 100 次」，但没说「这条有多旧」；
+  要不要把环形改成按会话划分（或按大小而不是条数）是**容量上的一个决定**，留给需要它的那一天。
+- `clear-data` 卡片的范围（前几轮留下的语义决定）仍等用户一句话。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`b060e0a10`**：`packages/web/src/features/network/{network-panel.tsx,model-exchange-pick.ts}`、
+  `packages/web/src/lib/strings{,-en}.ts`、`packages/web/test/model-exchange-pick.test.ts`、
+  `packages/web/e2e/network-panel.spec.mjs`、changelog 一对；台账（条目 7.227、上表那一行、本节）随本文件
+  另起一笔。
