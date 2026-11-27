@@ -6,6 +6,8 @@
  */
 export * from "./capabilities.js";
 export * from "./codec.js";
+export * from "./endpoint.js";
+export * from "./ids.js";
 export * from "./manifest.js";
 export * from "./protocol.js";
 export * from "./snapshot.js";

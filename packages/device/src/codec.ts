@@ -172,6 +172,11 @@ export function parseFrame(value: unknown): AnyFrame {
         permissions: permissions as never,
       };
     }
+    case "env": {
+      if (!isRecord(value.data))
+        throw new DeviceProtocolError("bad_frame", "env must be an object");
+      return { t: "env", data: value.data as never };
+    }
     case "log":
       return {
         t: "log",

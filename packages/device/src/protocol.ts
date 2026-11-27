@@ -65,6 +65,22 @@ export interface BridgeDescriptor {
   adapter?: { id: string; version: string };
 }
 
+/** What a bridge found on its machine, for the panel's "why is there no phone" line. */
+export interface BridgeEnvironment {
+  /** The ADB runner this bridge settled on, or why it has none. */
+  adb?: {
+    found: boolean;
+    path: string | null;
+    version: string | null;
+    /** `path | android-studio | scrcpy | bundled | setting | env | missing`. */
+    source: string;
+    /** A human sentence when `found` is false. */
+    message?: string;
+  };
+  /** `win32-x64`, `linux-x64`, … */
+  platform?: string;
+}
+
 /** One device as the bridge sees it — the part of `DeviceInfo` a bridge owns. */
 export interface DeviceReport {
   id: string;
@@ -169,6 +185,7 @@ export type BridgeFrame =
   | { t: "snapshot"; deviceId: string; snapshot: DeviceSnapshot }
   | { t: "event"; event: DeviceEvent }
   | { t: "result"; result: DeviceCommandResult }
+  | { t: "env"; data: BridgeEnvironment }
   | { t: "log"; level: "info" | "warn" | "error"; line: string }
   | { t: "pong" };
 
