@@ -4082,6 +4082,22 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       守卫用例多一条「深色灰档填充 + 灰阶字色」的对子。反证：退回插件页那一个类名 → 守卫 **1 failed**；
       桥表退回旧值、重建 core 后量同一枚 chip → **2.23**（字色又是描边色），恢复后 **9.9**。
       见「第三百六十轮」一节。
+- [x] **7.229 换布局不再丢掉网络面板的读者位置：搜索词、范围、类型、打开的那条记录与它的详情页**
+      （**2026-11-27 第三百六十一轮**落地，提交见「已完成的轮次」；`packages/web` 新
+      `features/network/network-place.ts`、`features/network/net-focus.ts` 加「已执行」戳、
+      `network-panel.tsx` 从到来的位置起算且每次改动写记录、`builtin-dock-panels.tsx` 的
+      `NetworkPanelBody` 算出所在的面，两份单测（7 + 4 条）＋ `network-panel.spec.mjs` 多 1 条 ＋
+      changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：网络面板是第三百五十四轮才加的，
+      晚于「换布局不再丢掉…」那一族（7.152–7.157，文件 / 记忆 / 轨迹 / 远程控制），所以它的阅读状态
+      一直只在组件自己的 `useState` 里。真浏览器实测：写了搜索词 `stream`、范围换成「最近 5 回合」、
+      类型收到「流」、打开一条记录的详情并切到「响应」之后换布局，回到的是一张没动过的列表（搜索词清空、
+      两个筛选回默认、详情关上）。现在照 `trace-place.ts` 的规则落了一份按对话存的位置（只在跨面时恢复、
+      恰好是面板自己打开时的样子就不记、发出的是拷贝），面板体从到来的位置起算、每次改动连带到达都写一次
+      记录；另外把回复下面那行「看这一回合」的跳转改成**由执行它的面板体记成已执行**——那句话原先一直留在
+      信箱里，换到另一面挂载的面板体会再执行一次、把刚恢复的范围与打开的记录又清掉（e2e 里先红了一次），
+      而它要的是此刻看一眼那一回合，不是一个要被记住的位置。反证：把这两个源码文件退回 `HEAD`、重建后
+      同一条探针 → 换到下侧栏和换回右侧栏两次都是**搜索词空、本次回复/全部选中、详情关上**；本笔之下两次
+      都留在详情与「响应」页。见「第三百六十一轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7341,6 +7357,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-27 | 7.226 | **一族「拿主题描边档当填充」的控件清掉，补一条守卫用例**（**2026-11-27 第三百五十八轮**落地，接着上一轮被中断的在途改动收尾；`packages/web` 12 个源码文件（模型选择器的活动厂商、插件页的分类选中、轨迹文件标签与传输开关、提及 chip 与输入框提及高亮、频道行「加入」按钮与折叠栏未读角标、组织切换器悬停与角标、路径胶囊、成员头像、目标条状态标、终端键帽）＋ 新 `test/outline-rung-fill.test.ts`（AST 扫描，带无痕痕迹例外表）＋ changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：导入主题的调色板桥把 `bg-gray-200` 系到 `--ui-line`，手绘涂鸦下描边 `#3f3a34` 配墨 `#332f2a`，这些控件是深底深字；改用 `bg-fill-neutral` / `bg-fg/10` / `bg-fg/7` 与 `text-fg`，各自的 `dark:bg-gray-700/800` 去掉；另修两处深色下把 `gray-200` 当字色（桥把它映到描边色，字偏暗）与一处折叠栏 `bg-gray-300` 角标 | 见「第三百五十八轮」一节（六包 `typecheck` rc=0；`oxlint` 改动 13 文件 0/0；`prettier --check` 与 `git diff --check` 干净；五包单测 core 1464 / ui 1119 / cli 568 / server 3228 / web 4129 全绿（web 新守卫 3 条）；真服务 + 真浏览器四组合：模型选择器活动分组、插件页分类选中、轨迹文件标签、提及 chip、折叠栏未读角标，涂鸦浅 14.82 / 10.61 / 12.19、涂鸦深 9.9 / 7.68、默认两档 10.4–16.4，console 0 error；反证 1.46） | 见本行提交 |
 | 2026-11-27 | 7.227 | **网络面板的模型行：取的过程中、取不到、本来就没有，三件事分开说**（**2026-11-27 第三百五十九轮**落地；`packages/web` 新纯逻辑 `features/network/model-exchange-pick.ts`（`pickModelExchange` ＋ `MODEL_EXCHANGE_MATCH_MS`）、`network-panel.tsx`（`ModelBodyNote` 三态、`BodyBlock` / `HeaderTable` 的 `empty` 参数、详情按行 id 挂载）、两本词典各 3 句、新单测 4 条、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **不碰接口、不动数据、无新依赖**）：模型行取不到请求体 / 响应体时，过去三栏落到与「真的发了空请求」一样的 `（空）`；现在「正在取」/「服务器上没有这次调用的记录（只保留最近 100 次）」/「取不到 ＋ 服务端那句话」三句分开，模型行的空请求头表写「未采集」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；全仓 `oxlint` **0 警告 0 错误**（2732 文件）；8 个改动文件 `prettier --check` 干净；`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **371 / 4130 / 2 跳过**（+1 文件 / +4 条即本笔）；**新单测 4 passed**；`network-panel.spec.mjs` **5 passed**（含新用例）；**反证**：面板退回 `HEAD`、重建后新用例 **1 failed**；真浏览器四态探针（找到 / 正在取 / 没有记录 / 被拒）＋ 英文窗口各一态，读到的正是这四句话，两态 console 只有既有的 `GET …/machines` 403、无 pageerror | `b060e0a10` |
 | 2026-11-27 | 7.228 | **外置主题的深色灰阶对上角色：200 是字色，深色填充落在填充 token 上**（**2026-11-27 第三百六十轮**落地；`packages/core` 的 `PALETTE_BRIDGE_DARK` 一行 ＋ 用例两条、`packages/web` 13 个源码文件的类名（`dark:bg-gray-700/800` → `dark:bg-fill-neutral`，含 `lib/tone.ts` 的灰档）、描边守卫多一条「深色灰档填充 + 灰阶字色」的对子、changelog 一对 —— **不碰接口、不动数据、无新依赖**）：导入主题的深色桥把 `--color-gray-200` 系到描边色，而两套内置深色档都把它当字色、应用里 41 处 `dark:text-gray-200` 也是这么用 —— 手绘涂鸦深色下 Agent 的占位符 chip 字与底同色（**1.00**），现在 **9.9**；带字的深色灰档填充同理换成 `dark:bg-fill-neutral`，同一主题下 **2.71 → 6.05** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 214 接口 / 647 类型）；全仓 `oxlint` **0 警告 0 错误**；改动 18 个文件 `prettier --check` 干净、`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 / 6 跳过** · ui **133 / 1119** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **372 / 4134 / 2 跳过**（含守卫新的一条）；**反证**：插件页那一处换回 `dark:bg-gray-800` → 守卫 **1 failed**，恢复后 4 passed；桥表退回旧值重建 core、真服务端量同一枚 chip → **2.23**，恢复后 **9.9**；真浏览器（doodle 浅/深、github 深）四类取样全部量过，浅色改前改后逐页计数不变，console / pageerror 全 0 | `4b202f34d` |
+| 2026-11-27 | 7.229 | **换布局不再丢掉网络面板的读者位置：搜索词、范围、类型、打开的那条记录与它的详情页**（**2026-11-27 第三百六十一轮**落地；`packages/web` 新 `features/network/network-place.ts`、`features/network/net-focus.ts` 的「已执行」戳与单调加盖、`network-panel.tsx` 从到来的位置起算且每次改动写记录、`builtin-dock-panels.tsx` 的 `NetworkPanelBody` 算出所在的面、两份单测（7 + 4 条）、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：网络面板晚于「换布局不再丢掉…」那一族（7.152–7.157），阅读状态一直只在组件自己的 `useState` 里，换布局即清空；照 `trace-place.ts` 的规则按对话存一份位置（只在跨面时恢复、恰好是面板自己打开时的样子就不记、发出去的是拷贝），并把「看这一回合」的跳转改成由执行它的面板体记成已执行（原先每挂载一次就重放，会把刚恢复的范围与记录清掉） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 214 接口 / 647 类型）；`oxlint` 改动 11 文件 **0 警告 0 错误**；9 个改动文件 `prettier --check` 干净、`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **374 / 4145 / 2 跳过**（+2 文件 / +11 条即本笔）；`network-panel.spec.mjs` **6 passed**（含新用例）；**反证**：两个源码文件退回 `HEAD`、重建 web 后同一条真浏览器探针 → 换到下侧栏与换回右侧栏两次都是搜索词空、本次回复/全部选中、详情关上；本笔之下两次都留在详情与「响应」页，关标签再打开则从头开始（对照）；两态 console / pageerror 全 0 | `9ec773c2c` |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36254,3 +36271,96 @@ console / pageerror 四组合全空。**反证**：涂鸦浅色下把活动厂�
 - 代码一笔 **`4b202f34d`**（`packages/core/src/internal/external-theme.ts`、`packages/core/test/external-theme.test.ts`、
   13 个 web 源码文件、`packages/web/test/outline-rung-fill.test.ts`、changelog 一对）；台账（条目 7.228、
   上表那一行、本节）随本文件另起一笔。
+
+## 第三百六十一轮：换布局不再丢掉网络面板的读者位置（2026-11-27，条目 7.229）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `331a58396`；`git fetch origin` 一次即通，
+`origin/main` 仍是 `331a58396`，快进无内容（没有切分支、没碰 `legacy/main`、没推 upstream）。收尾前再 fetch
+一次，远端仍无新提交，没有让号。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、3.6 要模型
+key；4.1–4.3 明令不动；5.6 / 5.10 要拍板 / 新依赖），第 7 节到 7.228 全勾。先核了一遍 `main` 的 CI（最新
+run `45959010563`，`331a58396`，**success**）——没有红可捡；又按第二十三轮那条路现拉上游 `main` 到
+`refs/adelie-tmp/upstream-main-r361`（尖端 `a560b8211`，11-27 18:50），`84a35eda` 之后的 20 笔逐笔量过：大件
+（`#1926` 关闭停靠栏最后一个标签改成起始页 35 文件、`#1924` 远程对话重连盖住输入框 26 文件、`#1908` QQ 双向收发
+图片文件、`#1910` 机器上的对话说清为什么没有浏览器、`#1904` 连不上的机器停止重试）都是一轮的量或要本树没有的
+子系统，小件（`#1907` / `#1905` / `#1906` / `#1909`）各自要的 `session-app-center-dock.spec`、
+`features/dock/session-shortcuts.ts`、`features/chat/session/*`、`plugins/browser-automation/**`、
+`hmr/upgrade-seam.ts` 本树一份都没有 —— 于是回头找**我们自己**新加的那块。
+
+**为什么是这一条**：网络面板是第三百五十四轮才加的（用户点单），**晚于**「换布局不再丢掉…」那一族
+（7.148–7.157，子智能体输入框、文件、记忆、轨迹、远程控制五块），所以它的阅读状态一直只在组件自己的
+`useState` 里；第三百五十四 / 三百五十七 / 三百五十九轮都在改它，却没人量过换布局。
+
+**改前实测**（真服务端 8996、数据根 `/root/adelie-fork-data/r361`（从 r360 复制，含一条会话 `session-2026-11-27-rung-demo`）、真浏览器
+`/usr/bin/chromium`）：右侧栏打开「网络」→ 搜索框写 `stream`、范围换「最近 5 回合」、类型收「流」、点开那条
+`/api/…/stream` 的详情并切到「响应」→ 点「移到下方」。换布局之后读到的是一张**没动过的列表**：搜索框空、
+`本次回复` 与 `全部` 处于按下状态、7 行记录、详情关上；再换回右侧栏同样如此。
+
+**做了什么**：
+
+- `packages/web/src/features/network/network-place.ts`（新，纯逻辑）：`NetworkPlace`（`surface` + `scope` /
+  `type` / `query` / `pinnedTurn` / `openId` / `tab`）与 `recallNetworkPlace` / `rememberNetworkPlace`，
+  规则逐条照 `trace-place.ts`：只在**不同**的面上恢复（换布局才是换面，关标签再开、切对话再回来都落在原面上，
+  因此从头开始）；到达时也写一次（把记录盖上自己所在的面，下一次往回换才找得到位置）；恰好是面板自己打开的
+  样子就不记；发出去的是拷贝。`NetDetailTab` 这个联合类型挪进这个模块（面板要从位置里读它）。
+  **有意不带**：是否「显示原文」（确认框写明只对当前这条有效，换布局应当重新问，而不是把没脱敏的密钥带到
+  另一面）、「更多」菜单与显示原文的确认框、取回来的模型请求与响应（服务端答复，行再打开时重新取）。
+- `packages/web/src/features/network/net-focus.ts`：这句「看这一回合」的跳转原先一直留在 store 里，任何一次
+  重新挂载都会重放 —— e2e 新用例先红在这里：换布局后面板**丢掉了刚恢复的范围与详情**（搜索词与类型还在，
+  范围回到「本次回复」、详情关上、页签回到「概述」），因为重放跳转的 effect 把它清掉了。现在执行它的面板体
+  调 `markNetworkFocusApplied(at)` 把它记成已执行，`networkFocus()` 只交出「还没被执行的那一句」；同时把
+  `at` 改成单调盖章（`Date.now()` 可能与已经执行过的一句相同，会把它吞掉）。
+- `packages/web/src/features/network/network-panel.tsx`：`NetworkPanel` 多收一个 `surface`；六个阅读状态从
+  `recallNetworkPlace` 起算；一个 `useLayoutEffect` 在每次改动（含到达）时写记录；跳转的 effect 末尾记成已执行。
+- `packages/web/src/features/chat/builtin-dock-panels.tsx`：`NetworkPanelBody` 从 `useDockPanel()` 算出
+  `merged ? "merged" : position` 把面传下去（与轨迹、记忆、远程控制三块同一个写法），注册表改成它。
+- 用例：`packages/web/test/network-place.test.ts` **7 条**（跨面才恢复 / 没有位置 / 拷贝 / 最新一次写入生效 /
+  从头开始的位置不留 / 只有搜索词也算位置 / 一对话一份）、`packages/web/test/net-focus.test.ts` **4 条**
+  （执行后即历史 / 同一毫秒的第二次点击仍算 / 乱序执行无效 / 订阅者被告知）；
+  `packages/web/e2e/network-panel.spec.mjs` 多第 6 条（走到别处 → 换布局 → 关标签再打开），用真服务端 +
+  仓库自带的 mock 模型跑。changelog 一对。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报 `src/ifaces.json
+  unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** ·
+  server **222 / 3228 / 6 跳过** · web **374 / 4145 / 2 跳过**（+2 文件 / +11 条正是一笔的两份新单测）；hmr 无测试文件。
+- `oxlint` 改动 11 个文件 **0 警告 0 错误**；9 个改动文件（含 changelog 一对）`prettier --check` 干净；
+  `git diff --check` 干净。
+- **e2e（真服务端 8998 + mock 模型 8999 + 临时数据根）**：`network-panel.spec.mjs` **6 passed**（含新用例）。
+- **真浏览器两态**（`net-place.mjs`：`[data-testid="dock"]` 里读搜索框、按下状态、详情页签与活动页签）：
+
+  | 时刻 | 搜索词 | 范围 / 类型 | 详情 |
+  | --- | --- | --- | --- |
+  | 改前·换到下侧栏 | **空** | **本次回复 / 全部** | **关上**（7 行列表） |
+  | 改前·换回右侧栏 | **空** | **本次回复 / 全部** | **关上** |
+  | 本笔·换到下侧栏 | 详情仍开着 | — | **「响应」页签仍高亮** |
+  | 本笔·换回右侧栏 | 详情仍开着 | — | **「响应」页签仍高亮** |
+  | 本笔·关标签再从选择器打开（对照） | **空** | **本次回复** | **关上**（从头开始） |
+
+  「详情仍开着」之后点「返回」读到的搜索框是 `stream`、范围「最近 5 回合」与类型「流」都在按下状态（e2e 与
+  探针各量过一次）。截图 `r361/net-place-{before,after2}-moved.png` 逐张看过：改前那张是一张干净的列表（本次
+  回复 / 全部高亮、搜索框空），本笔那张是同一个记录的「响应」页、页签高亮。两态 console **0 error**、
+  pageerror **0 条**。
+- **反证**：把 `network-panel.tsx` 与 `builtin-dock-panels.tsx` 退回 `HEAD`（`git stash` 只装这两个文件）、
+  重建 web、同一条探针 → 两次换布局都是搜索词空、本次回复 / 全部选中、详情关上；`git stash pop` 恢复、重建后
+  再跑一遍 → 与上表「本笔」两行逐项一致。
+- 端口只用 8996（真服务端）、8998 / 8999（e2e 用的一次性服务端与 mock），3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落 `/root/adelie-fork-data/r361` 与 e2e 的临时目录，探针 / 截图都在 scratchpad 的 `r361/` 下。
+
+### 没做 / 留着
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 上游 `r361` 那 20 笔一笔没落：大件各是一轮或数轮的量，小件缺的子系统本树都还没有（`#1926` 的停靠栏起始页
+  与本树的 `dock-state` 结构也不是一层）。
+- 面板自己的另外两样（「更多」菜单、「显示原文」）仍不随换布局保留，这是有意的（见 `network-place.ts` 的头注）。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`9ec773c2c`**（`packages/web/src/features/network/{network-place.ts,net-focus.ts,network-panel.tsx}`、
+  `packages/web/src/features/chat/builtin-dock-panels.tsx`、`packages/web/test/{network-place,net-focus}.test.ts`、
+  `packages/web/e2e/network-panel.spec.mjs`、changelog 一对）；台账（条目 7.229、上表那一行、本节）随本文件另起一笔。
