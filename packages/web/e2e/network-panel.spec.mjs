@@ -172,3 +172,52 @@ test("a model row the server no longer keeps says so instead of (empty)", async 
   // The page never saw this call's headers: that table says so rather than reading as "none sent".
   await expect(dock.getByText("未采集").first()).toBeVisible();
 });
+
+test("a layout move keeps the reader's place; a tab closed and reopened starts over", async ({
+  page,
+}) => {
+  // The panel body is remounted when the dock moves between edges. The reading controls and the
+  // open record are the reader's place and come back; a tab closed and reopened arrives on the
+  // surface the place was left on and starts over (features/network/network-place.ts).
+  await openSessionWithOneTurn(page);
+  await page.locator('[data-net-turn="1"]').click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+
+  // Walk away: last five turns, streams only, a search word, one record's detail on 响应.
+  await dock.getByRole("button", { name: "最近 5 回合" }).click();
+  await dock.getByRole("button", { name: "流", exact: true }).click();
+  await dock.getByRole("searchbox", { name: "搜索" }).fill("stream");
+  await dock.getByRole("button").filter({ hasText: "/api/" }).first().click();
+  await dock.getByRole("button", { name: "响应", exact: true }).click();
+  await expect(dock.getByRole("button", { name: "响应", exact: true })).toHaveClass(/font-medium/);
+
+  // The move: right dock → bottom dock. The same record's detail is on screen, on the same tab.
+  await dock.getByTestId("dock-move").click();
+  const moved = onScreenDock(page);
+  await expect(moved.getByRole("button", { name: "响应", exact: true })).toHaveClass(/font-medium/);
+  await moved.getByRole("button", { name: "返回" }).click();
+  await expect(moved.getByRole("searchbox", { name: "搜索" })).toHaveValue("stream");
+  await expect(moved.getByRole("button", { name: "最近 5 回合" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(moved.getByRole("button", { name: "流", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // A tab closed and reopened is not a move: the panel arrives on the surface the place was left
+  // on, so it starts over — no search word, the scope back on this reply, the detail shut.
+  await moved.getByTestId("dock-tab-close").first().click();
+  await page.getByTestId("dock-toggle-bottom").click();
+  await page.getByTestId("dock-pick-network").click();
+  const reopened = onScreenDock(page);
+  await expect(reopened.getByText("记录中")).toBeVisible();
+  await expect(reopened.getByRole("searchbox", { name: "搜索" })).toHaveValue("");
+  await expect(reopened.getByRole("button", { name: "本次回复" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(reopened.getByRole("button", { name: "返回" })).toHaveCount(0);
+});

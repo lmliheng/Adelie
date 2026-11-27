@@ -14,7 +14,7 @@
  * looking for is under the reply they typed. A request made before the page opened a turn — a
  * listing fetch, the Session's stream — sits in its own group at the end.
  */
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import {
   Button,
@@ -54,6 +54,7 @@ import { listModelExchanges } from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { toneDot, toneInk } from "../../lib/tone";
+import type { DockSurface } from "../dock/panel-context";
 import type { DockPanelBodyProps } from "../dock/panel-registry";
 import { useChatDock } from "../chat/chat-dock-context";
 import { SseFrameList } from "../traces/sse-frame-list";
@@ -69,10 +70,10 @@ import {
 } from "./net-rows";
 import type { NetScope, NetTypeFilter } from "./net-rows";
 import { exportNetLogJson, netLogJson } from "./net-export";
-import { networkFocus, subscribeNetworkFocus } from "./net-focus";
+import { markNetworkFocusApplied, networkFocus, subscribeNetworkFocus } from "./net-focus";
+import { recallNetworkPlace, rememberNetworkPlace } from "./network-place";
+import type { NetDetailTab } from "./network-place";
 
-/** The detail's tabs, in the order the design lists them. */
-type NetDetailTab = "overview" | "request" | "response" | "events" | "related";
 const DETAIL_TABS: readonly { key: NetDetailTab; label: () => string }[] = [
   { key: "overview", label: () => S.network.tabOverview },
   { key: "request", label: () => S.network.tabRequest },
@@ -179,23 +180,48 @@ function Waterfall({ entry }: { entry: NetRequest }) {
   );
 }
 
-export function NetworkPanel({ active }: DockPanelBodyProps) {
+export function NetworkPanel({
+  active,
+  surface,
+}: DockPanelBodyProps & {
+  /** The dock surface this body is drawn on — what a layout move changes (see network-place.ts). */
+  surface: DockSurface;
+}) {
   const { selected } = useChatDock();
   const sessionId = selected?.sessionId ?? null;
   const version = useSyncExternalStore(subscribeNetLog, netLogVersion);
   useSyncExternalStore(subscribeNetworkFocus, networkFocus);
 
-  const [scope, setScope] = useState<NetScope>("turn");
-  const [type, setType] = useState<NetTypeFilter>("all");
-  const [query, setQuery] = useState("");
-  const [pinnedTurn, setPinnedTurn] = useState<number | null>(null);
-  const [openId, setOpenId] = useState<number | null>(null);
-  const [tab, setTab] = useState<NetDetailTab>("overview");
+  // ---- the place comes back (network-place.ts) ----
+  // The place this body arrived into: a layout move mounts the body on the other surface, and the
+  // record written there hands back the search word, the filters, the open record and its tab. Any
+  // other mount (a tab reopened, a conversation switched back to) arrives on the surface the place
+  // was left on, so recall answers null and the panel starts over. Read once: the record is written
+  // on every change below, never on the way in.
+  const [arrived] = useState(() =>
+    sessionId === null ? null : recallNetworkPlace(sessionId, surface),
+  );
+
+  const [scope, setScope] = useState<NetScope>(arrived?.scope ?? "turn");
+  const [type, setType] = useState<NetTypeFilter>(arrived?.type ?? "all");
+  const [query, setQuery] = useState(arrived?.query ?? "");
+  const [pinnedTurn, setPinnedTurn] = useState<number | null>(arrived?.pinnedTurn ?? null);
+  const [openId, setOpenId] = useState<number | null>(arrived?.openId ?? null);
+  const [tab, setTab] = useState<NetDetailTab>(arrived?.tab ?? "overview");
   const [revealed, setRevealed] = useState(false);
   const [confirmReveal, setConfirmReveal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // A jump from the transcript's inline request line: show that turn and open the tab.
+  // Stamped on every change and on arrival — arrival included, so the next crossing (back the other
+  // way) finds the record pointing at the surface this body is on now (see network-place.ts).
+  useLayoutEffect(() => {
+    if (sessionId === null) return;
+    rememberNetworkPlace(sessionId, { surface, scope, type, query, pinnedTurn, openId, tab });
+  }, [sessionId, surface, scope, type, query, pinnedTurn, openId, tab]);
+
+  // A jump from the transcript's inline request line: show that turn and open the tab. Applying it
+  // marks it applied in the store, so a body mounted later (a layout move, a reopened tab) does not
+  // replay it over the place that body is restoring (net-focus.ts, network-place.ts).
   const focus = networkFocus();
   const lastFocusAt = useRef(0);
   useEffect(() => {
@@ -206,6 +232,7 @@ export function NetworkPanel({ active }: DockPanelBodyProps) {
     setOpenId(null);
     setRevealed(false);
     setTab("overview");
+    markNetworkFocusApplied(focus.at);
   }, [focus]);
 
   // A conversation switch starts the panel over (the pin belonged to the other Session).

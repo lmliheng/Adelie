@@ -171,6 +171,15 @@ function TracePanelBody({ active }: DockPanelBodyProps) {
   );
 }
 
+function NetworkPanelBody({ active }: DockPanelBodyProps) {
+  // The surface this body is drawn on — a layout move changes it and only then does the panel's own
+  // place come back (network-place.ts; a Session switch comes back to the same surface and starts
+  // the reading controls over, as it always has).
+  const { position, merged } = useDockPanel();
+  const surface = merged ? "merged" : position;
+  return <NetworkPanel active={active} surface={surface} />;
+}
+
 function MessagingPanelBody({ active }: DockPanelBodyProps) {
   const { selected } = useChatDock();
   // The surface this body is drawn on — a layout move changes it and only then does the form's
@@ -238,7 +247,7 @@ const BUILTIN_DOCK_PANELS: readonly DockPanelDefinition[] = [
     label: () => S.network.panelTitle,
     glyph: ICONS.network,
     order: 45,
-    Body: NetworkPanel,
+    Body: NetworkPanelBody,
   },
   {
     id: "messaging",
