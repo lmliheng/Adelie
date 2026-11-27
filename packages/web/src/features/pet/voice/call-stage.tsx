@@ -128,7 +128,7 @@ export function CallStage({ call }: { call: PetCall }) {
               className={`grid h-10 w-10 place-items-center rounded-full shadow-sm transition-colors ${
                 call.muted
                   ? "bg-accent text-accent-fg"
-                  : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-fill-neutral dark:text-gray-300 dark:hover:bg-gray-700"
               }`}
             >
               <GlyphIcon d={call.muted ? ICONS.microphoneOff : ICONS.microphone} size={17} />
@@ -147,7 +147,7 @@ export function CallStage({ call }: { call: PetCall }) {
           <button
             type="button"
             onClick={call.dismiss}
-            className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs text-gray-600 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs text-gray-600 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-fill-neutral dark:text-gray-300 dark:hover:bg-gray-700"
           >
             {S.pet.callClose}
           </button>
@@ -176,7 +176,7 @@ function PetAvatar({
   const Figure = PET_FIGURE_VIEWS[figure];
   return (
     <span
-      className={`pet-avatar grid shrink-0 place-items-center overflow-hidden rounded-full border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 ${className}`}
+      className={`pet-avatar grid shrink-0 place-items-center overflow-hidden rounded-full border border-gray-200 bg-white dark:border-gray-700 dark:bg-fill-neutral ${className}`}
       style={{ "--pet-level": String(Math.min(1, Math.max(0, level))) } as CSSProperties}
       data-live={live ? "true" : undefined}
     >
@@ -199,7 +199,7 @@ function Bubble({ turn, dim = false }: { turn: CallTurn; dim?: boolean }) {
         className={`pet-bubble max-w-[78%] rounded-2xl px-2 py-1 text-xs leading-snug break-words ${
           mine
             ? "rounded-br-sm bg-accent text-accent-fg"
-            : "rounded-bl-sm bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+            : "rounded-bl-sm bg-gray-100 text-gray-800 dark:bg-fill-neutral dark:text-gray-100"
         } ${dim ? "opacity-70" : ""}`}
       >
         {turn.text}
@@ -216,7 +216,7 @@ function ThinkingBubble(): ReactElement {
   return (
     <div className="flex items-end gap-1.5">
       <PetAvatar className="h-5 w-5" />
-      <span className="pet-bubble rounded-2xl rounded-bl-sm bg-gray-100 px-2.5 py-2 dark:bg-gray-800">
+      <span className="pet-bubble rounded-2xl rounded-bl-sm bg-gray-100 px-2.5 py-2 dark:bg-fill-neutral">
         <span className="pet-thinking flex gap-1">
           <i />
           <i />

@@ -15,11 +15,17 @@
  * can render words; an icon child cannot). The files that keep an inert use list them in
  * {@link INERT} with the reason, and a listed use that is gone fails too, so the list cannot rot.
  *
- * Only the **light** rung is guarded. The dark halves (`dark:bg-gray-700` / `dark:bg-gray-800`)
- * carry the same defect for the same reason, and they are far more numerous; the sweep that moved
- * these call sites onto `bg-fill-neutral` / `bg-fg/N` also dropped their dark halves (a token needs
- * no per-mode twin), but the ones elsewhere are still on the grey ramp, and that remaining sweep is
- * its own pass (recorded in FORK-PROGRESS.md).
+ * Only the **light** rung is guarded by the rule above. The dark halves (`dark:bg-gray-700` /
+ * `dark:bg-gray-800`, both of them `--ui-line` in the dark bridge) carry the same defect for the
+ * same reason, and there are far more of them; the sweep that moved the light call sites onto
+ * `bg-fill-neutral` left these on the grey ramp. The pass that finished it (2026-11-27, entry
+ * 7.228) moved the dark fills that carry words onto `dark:bg-fill-neutral` too, and left three
+ * containers that only look like they carry words — a segmented control's gap, a progress track
+ * and a chart track. What is guarded here for dark is the **collapse**: an element that both
+ * fills with that rung and inks with the grey ramp a shade lighter or darker than it. That pair is
+ * what a reader actually lost — in the hand-drawn theme the muted ink measured 2.71:1 on the
+ * outline fill, and before the bridge mapped `--color-gray-200` to an ink, `dark:text-gray-200`
+ * on `dark:bg-gray-800` was the same colour twice.
  */
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -31,11 +37,22 @@ const SCAN = scanSources([".tsx", ".ts"]);
 /** The rung as a utility, whether it is plain, alpha'd (`bg-gray-200/70`) or `dark:`-prefixed. */
 const RUNG = /(?<![\w-])bg-gray-200(?![\d])/;
 
+/**
+ * The dark fill: its two rungs are `--ui-line` in the dark bridge, which a theme may paint as a
+ * strong outline rather than a wash (`bg-gray-700`, `dark:bg-gray-800/60`, …).
+ */
+const DARK_FILL = /(?<![\w-])dark:bg-gray-(?:700|800)(?![\d])/;
+
+/** The grey ink a theme's dark ramp carries (`--ui-fg` / `--ui-fg-muted` / `--ui-fg-subtle`). */
+const DARK_INK = /(?<![\w-])dark:text-gray-(?:200|300|400|500|600)(?![\d])/;
+
 interface Mark {
   /** `id:line <tag>` — enough to find the element again. */
   readonly where: string;
   /** Whether the element can put words on screen (a text or expression child). */
   readonly words: boolean;
+  /** The element's class list, whichever form it was written in. */
+  readonly cls: string;
 }
 
 /**
@@ -106,16 +123,20 @@ function carriesText(children: readonly ts.JsxChild[]): boolean {
   });
 }
 
-/** The rung-painted elements in one file; `.ts` files are read as text (no JSX to parse). */
-function marks(file: SourceFile): Mark[] {
+/** Elements painted with one rung pattern; `.ts` files are read as text (no JSX to parse). */
+function marks(file: SourceFile, pattern: RegExp): Mark[] {
   if (!file.path.endsWith(".tsx")) {
-    return file.text
-      .split("\n")
-      .flatMap((line, i) =>
-        RUNG.test(line)
-          ? [{ where: `${file.id}:${i + 1} ${line.trim().slice(0, 80)}`, words: true }]
-          : [],
-      );
+    return file.text.split("\n").flatMap((line, i) =>
+      pattern.test(line)
+        ? [
+            {
+              where: `${file.id}:${i + 1} ${line.trim().slice(0, 80)}`,
+              words: true,
+              cls: line,
+            },
+          ]
+        : [],
+    );
   }
   const source = ts.createSourceFile(
     file.path,
@@ -128,12 +149,14 @@ function marks(file: SourceFile): Mark[] {
   const visit = (node: ts.Node): void => {
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
       const open = ts.isJsxElement(node) ? node.openingElement : node;
-      if (RUNG.test(classNameOf(open))) {
+      const cls = classNameOf(open);
+      if (pattern.test(cls)) {
         const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
         const children = ts.isJsxElement(node) ? node.children : [];
         found.push({
           where: `${file.id}:${line} <${open.tagName.getText(source)}>`,
           words: carriesText(children),
+          cls,
         });
       }
     }
@@ -150,7 +173,7 @@ describe("the outline rung is not a fill", () => {
 
   it("no unlisted element paints the rung, and no listed one puts words on it", () => {
     const offenders = SCAN.files.flatMap((file) =>
-      marks(file)
+      marks(file, RUNG)
         .filter((mark) => mark.words || !(file.id in INERT))
         .map((mark) => `${mark.where}${mark.words ? " (carries words)" : ""}`),
     );
@@ -162,8 +185,20 @@ describe("the outline rung is not a fill", () => {
 
   it("keeps the exception list honest — every listed file still paints the rung", () => {
     const stale = Object.keys(INERT).filter(
-      (id) => !SCAN.files.some((file) => file.id === id && marks(file).length > 0),
+      (id) => !SCAN.files.some((file) => file.id === id && marks(file, RUNG).length > 0),
     );
     expect(stale, "these files no longer paint bg-gray-200; drop their INERT entries").toEqual([]);
+  });
+
+  it("no element inks with the grey ramp on the dark rung's fill", () => {
+    const offenders = SCAN.files.flatMap((file) =>
+      marks(file, DARK_FILL)
+        .filter((mark) => DARK_INK.test(mark.cls))
+        .map((mark) => mark.where),
+    );
+    expect(
+      offenders,
+      "dark:bg-gray-700/800 is the theme's outline rung; fill with dark:bg-fill-neutral and ink with text-fg / text-fg-muted",
+    ).toEqual([]);
   });
 });

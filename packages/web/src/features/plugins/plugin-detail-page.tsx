@@ -104,7 +104,7 @@ export function PluginDetailPage() {
       ) : (
         <>
           <header className="mt-4 flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-fill-neutral dark:text-gray-400">
               <GlyphIcon d={NAV_ICONS.plugins} size={22} />
             </div>
             <div className="min-w-0 flex-1">
@@ -150,7 +150,7 @@ export function PluginDetailPage() {
               {(entry.keywords ?? []).map((keyword) => (
                 <span
                   key={keyword}
-                  className="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                  className="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-gray-500 dark:bg-fill-neutral dark:text-gray-400"
                 >
                   {keyword}
                 </span>
@@ -158,7 +158,7 @@ export function PluginDetailPage() {
             </div>
           )}
 
-          <p className="mt-4 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+          <p className="mt-4 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-fill-neutral dark:text-gray-400">
             {S.pluginRegistry.installHint}
           </p>
 

@@ -1724,7 +1724,7 @@ function Tag({
   return (
     <span
       data-tooltip={title}
-      className={`rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-800 ${mono ? "font-mono text-gray-500 dark:text-gray-400" : "font-medium text-gray-600 dark:text-gray-300"}`}
+      className={`rounded-full bg-gray-100 px-2 py-0.5 dark:bg-fill-neutral ${mono ? "font-mono text-gray-500 dark:text-gray-400" : "font-medium text-gray-600 dark:text-gray-300"}`}
     >
       {children}
     </span>

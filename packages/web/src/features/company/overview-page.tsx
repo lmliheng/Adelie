@@ -301,7 +301,7 @@ function StepCard({
               ? toneSurface.success
               : current
                 ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-                : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                : "bg-gray-100 text-gray-500 dark:bg-fill-neutral dark:text-gray-400"
           }`}
         >
           {done ? <GlyphIcon d={STAT_ICONS.check} size={ICON_SIZE.inlineGlyph} /> : index}

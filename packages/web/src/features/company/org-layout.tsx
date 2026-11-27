@@ -136,7 +136,7 @@ function OrgEmptyLanding() {
   return (
     <OrgCenteredFrame>
       <div className="mx-auto max-w-2xl py-8 text-center md:py-14">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-fill-neutral dark:text-gray-300">
           <GlyphIcon d={ICONS.building} size={ICON_SIZE.sectionMark + 6} />
         </span>
         <Heading level={1} display className="mt-4">

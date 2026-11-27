@@ -165,7 +165,7 @@ export function SemanticIdField({
           input
         ) : (
           <div className="flex min-w-0 flex-1 items-stretch">
-            <span className="flex shrink-0 items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-100 px-2 font-mono text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+            <span className="flex shrink-0 items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-100 px-2 font-mono text-xs text-gray-500 dark:border-gray-700 dark:bg-fill-neutral dark:text-gray-400">
               {lockedPrefix}
             </span>
             {input}

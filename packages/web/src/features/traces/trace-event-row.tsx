@@ -176,7 +176,7 @@ function stopReasonOf(msg: OmniMessage): string | undefined {
 }
 
 const codeBlock =
-  "max-h-72 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-100 px-2.5 py-2 text-xs dark:bg-gray-800/70";
+  "max-h-72 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-100 px-2.5 py-2 text-xs dark:bg-fill-neutral";
 
 /** token_usage bucket table (a single event only reports exact numbers; the donut ring only appears in the top-right of the Task card, so it isn't redrawn here). */
 function UsageTable({ p }: { p: Record<string, unknown> }) {
@@ -250,7 +250,7 @@ function SessionMetaBody({ p }: { p: Record<string, unknown> }) {
       {prompt.trim() && (
         <details>
           <summary className={summaryClass}>{S.traces.systemPrompt}</summary>
-          <div className="md-body mt-1.5 max-h-96 overflow-auto rounded bg-gray-100 px-2.5 py-2 text-sm leading-relaxed text-gray-700 dark:bg-gray-800/70 dark:text-gray-300">
+          <div className="md-body mt-1.5 max-h-96 overflow-auto rounded bg-gray-100 px-2.5 py-2 text-sm leading-relaxed text-gray-700 dark:bg-fill-neutral dark:text-gray-300">
             <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS}>
               {prompt}
             </ReactMarkdown>

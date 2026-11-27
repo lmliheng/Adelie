@@ -281,17 +281,23 @@ const PALETTE_BRIDGE_LIGHT: ReadonlyArray<readonly [string, string]> = [
  * its reasons — 100 carries the body ink, 300 and 400 the muted ink, 500 the subtle, 700 and 800
  * the lines, 900 the raised fill a panel sits on and 950 the recessed one.
  *
- * THREE RUNGS DEPART FROM THAT SHAPE, because the app's own usage says its dark ramp is not a pure
- * inversion: 50 stays a wash (nothing in the app spells `dark:*-50`, while `bg-gray-50` is a wash
- * in both modes), 200 follows the lines rather than the ink (its unpaired use is `border-gray-200`,
- * a border either way), and `--color-white` is absent on purpose — the default theme makes it
- * `var(--ui-surface)` in every mode, which is what a card wants and what a text on a fill does not
- * need since those fills are accents.
+ * 200 IS INK, NOT A LINE. `github.css` (`#c2c2c2`) and `geek.css` (`#c5c0bf`) both keep it one
+ * step under the body ink, and the app reads it that way at every `dark:text-gray-200` — a
+ * placeholder token's label, a tab's name, a ticket's assignee. Tying it to `--ui-line` instead
+ * (this table's first shape) painted those words in a theme's outline colour: dim on a plain
+ * surface (about 2:1 in the hand-drawn theme), and inside a `dark:bg-gray-800` chip — the same
+ * token — literally the same colour as the fill. A theme whose outline is a strong hand-drawn line
+ * is where that became obvious; the mismatch is the table's, not the theme's.
+ *
+ * TWO RUNGS DEPART FROM THE SHIPPED SHAPE: 50 stays a wash (nothing in the app spells `dark:*-50`,
+ * while `bg-gray-50` is a wash in both modes), and `--color-white` is absent on purpose — the
+ * default theme makes it `var(--ui-surface)` in every mode, which is what a card wants and what a
+ * text on a fill does not need since those fills are accents.
  */
 const PALETTE_BRIDGE_DARK: ReadonlyArray<readonly [string, string]> = [
   ["--color-gray-50", "--ui-surface-muted"],
   ["--color-gray-100", "--ui-fg"],
-  ["--color-gray-200", "--ui-line"],
+  ["--color-gray-200", "--ui-fg"],
   ["--color-gray-300", "--ui-fg-muted"],
   ["--color-gray-400", "--ui-fg-muted"],
   ["--color-gray-500", "--ui-fg-subtle"],

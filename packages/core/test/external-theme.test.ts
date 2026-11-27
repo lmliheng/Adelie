@@ -211,10 +211,13 @@ describe("externalThemeCss", () => {
         "--color-gray-900:var(--ui-fg-emphasis);--color-gray-950:var(--ui-fg-emphasis)}",
     );
     // Dark: the ramp inverts — the low rungs carry the ink, the high ones the fills. Emitted after
-    // the light bridge, which is what lets it win the `.dark` selector the two share.
+    // the light bridge, which is what lets it win the `.dark` selector the two share. 200 is ink
+    // here as it is in both shipped ramps (see PALETTE_BRIDGE_DARK): the app spells it at every
+    // `dark:text-gray-200`, including inside a `dark:bg-gray-800` chip, where a line-coloured ink
+    // and the fill would be the same colour.
     expect(css).toContain(
       ':root[data-theme="full"].dark{--color-gray-50:var(--ui-surface-muted);' +
-        "--color-gray-100:var(--ui-fg);--color-gray-200:var(--ui-line);" +
+        "--color-gray-100:var(--ui-fg);--color-gray-200:var(--ui-fg);" +
         "--color-gray-300:var(--ui-fg-muted);--color-gray-400:var(--ui-fg-muted);" +
         "--color-gray-500:var(--ui-fg-subtle);--color-gray-600:var(--ui-fg-subtle);" +
         "--color-gray-700:var(--ui-line);--color-gray-800:var(--ui-line);" +
@@ -232,13 +235,19 @@ describe("externalThemeCss", () => {
   it("bridges only the rungs whose token this theme declares", () => {
     // `warm-paper` declares ink and a canvas and nothing else: no line, wash or subtle rung is
     // bridged, because pointing one at a token the default theme aliases back onto that same rung
-    // would leave css with a cycle — which it resolves by discarding both values.
+    // would leave css with a cycle — which it resolves by discarding both values. 200 rides with
+    // the ink in both modes (PALETTE_BRIDGE_DARK), so in dark the ink this theme declares carries
+    // it — beside 100, and the canvas carries 950.
     const css = externalThemeCss(read(VALID));
     expect(css).toContain(
       ':root[data-theme="warm-paper"],:root[data-theme="warm-paper"].dark' +
         "{--color-gray-700:var(--ui-fg);--color-gray-800:var(--ui-fg)}",
     );
-    expect(css).not.toContain("--color-gray-200");
+    expect(css).toContain(
+      ':root[data-theme="warm-paper"].dark' +
+        "{--color-gray-100:var(--ui-fg);--color-gray-200:var(--ui-fg);" +
+        "--color-gray-950:var(--ui-canvas)}",
+    );
     expect(css).not.toContain("--color-gray-500");
     expect(css).not.toContain("--color-gray-50:");
   });

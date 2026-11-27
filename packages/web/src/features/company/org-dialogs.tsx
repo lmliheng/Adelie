@@ -483,7 +483,7 @@ export function CreateOrganizationDialog({
     >
       <div className="space-y-3">
         {restored && (
-          <p className="rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+          <p className="rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600 dark:bg-fill-neutral dark:text-gray-300">
             {S.company.draftRestored}
           </p>
         )}

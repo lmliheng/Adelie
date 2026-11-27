@@ -370,7 +370,7 @@ function ReleasesLink({ href, children }: { href: string; children: ReactNode })
 /** The update command's output tail (may carry ANSI colour when the server env forces it). */
 function OutputTail({ text }: { text: string }) {
   return (
-    <pre className="max-h-56 overflow-auto rounded-md bg-gray-100 p-3 text-xs leading-relaxed whitespace-pre-wrap text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+    <pre className="max-h-56 overflow-auto rounded-md bg-gray-100 p-3 text-xs leading-relaxed whitespace-pre-wrap text-gray-700 dark:bg-fill-neutral dark:text-gray-300">
       {stripAnsi(text)}
     </pre>
   );

@@ -265,7 +265,7 @@ function ModelPickerBody({
           onClick={() => onPick(m)}
           className={`flex w-full items-center gap-2 px-4 py-2 text-left transition-colors duration-150 ${
             current ? "text-gray-900 dark:text-gray-100" : "text-gray-700 dark:text-gray-300"
-          }${isHighlighted ? " bg-gray-100 dark:bg-gray-800" : ""}`}
+          }${isHighlighted ? " bg-gray-100 dark:bg-fill-neutral" : ""}`}
         >
           <ProviderLogo provider={m.provider} className="h-4 w-4 shrink-0" />
           {/* The marks follow the name rather than the row's far edge, so each reads as part of

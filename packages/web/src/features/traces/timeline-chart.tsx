@@ -573,7 +573,7 @@ export function TimelineChart({
               <div key={g.taskIndex} className="space-y-1">
                 {!hideTaskLabel && (
                   <div className="flex items-center gap-2 pl-[5.5rem]">
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-fg-muted dark:bg-gray-800">
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-fg-muted dark:bg-fill-neutral">
                       {S.traces.task(g.taskIndex + 1)}
                     </span>
                     <span className="font-mono text-xs text-gray-400">
