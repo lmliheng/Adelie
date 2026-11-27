@@ -1,0 +1,47 @@
+{
+  "name": "@adelie/device-adb",
+  "version": "0.8.7",
+  "type": "module",
+  "description": "The Android (ADB) device bridge: finds an adb, polls USB devices, collects a layered snapshot and runs commands — as a standalone process that speaks @adelie/device's protocol.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "packages/device-adb"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "adelie-device-bridge": "./dist/bridge-bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@adelie/device": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.6"
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

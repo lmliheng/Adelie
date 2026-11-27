@@ -17,8 +17,13 @@ import {
 } from "./protocol.js";
 import { isDeviceSnapshot } from "./snapshot.js";
 
-/** Bigger than any legitimate frame (a screenshot arrives as a file, not inline base64). */
-export const MAX_FRAME_BYTES = 4 * 1024 * 1024;
+/**
+ * The largest single frame either side will buffer. Screenshots and pulled files travel inline
+ * as base64 over the local pipe (P0 has no file channel), so this has to fit a phone photo:
+ * 12 MiB of JSON carries 8 MiB of base64, i.e. 6 MiB of bytes — the adapter's own ceiling.
+ * One line above it is still a protocol error rather than an ever-growing buffer.
+ */
+export const MAX_FRAME_BYTES = 12 * 1024 * 1024;
 
 export function encodeFrame(frame: AnyFrame): string {
   return `${JSON.stringify(frame)}\n`;
