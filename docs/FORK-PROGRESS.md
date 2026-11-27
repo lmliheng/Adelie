@@ -7307,6 +7307,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-27 | 7.223 | **对话页多了一个「网络」面板，每一回合发了哪些请求都看得见；顺带把工作区选择器选中行的配色修好**（**2026-11-27 第三百五十四轮**落地，用户点单 + 用户带截图报配色；`packages/web` 22 个文件 / +2462 −20：新 `api/net-log.ts`（环形 300 条、响应体每条 64 KB、默认遮罩）、`api/client.ts` / `api/sse.ts` 插桩、新 `features/network/` 五个文件、`features/settings/network-section.tsx`、`builtin-dock-panels.tsx`、`message-item.tsx` / `message-stream.tsx` 的内联行、两本词典各 +128/130 行、新单测 `test/network-panel.test.ts`（21 条）+ `settings-sections.test.ts`（+4）、新 spec `e2e/network-panel.spec.mjs`（3 条）；配色那处在 `features/chat/workspace-finder.tsx` 两处类名 —— **不碰服务端、不碰接口、无新依赖、不动已存数据**）：面板是停靠区的常驻标签（与子代理/文件/记忆/轨迹/日程并列），记录只在本页内存、刷新即清空；按回合分组、范围/类型/搜索、详情在面板内切换（概述含时间分解 / 请求 / 响应 / 事件流 / 关联），助手回复页脚加 `⚡ N 个请求 · M 次模型调用 · 耗时` 可点回该回合，设置›系统加「网络记录」一节；服务端写帧那半仍是「未采集」占位（P1）。配色：选中行原来拿 `bg-gray-200` 当填充，外置主题的调色板桥把它映到描边色，手绘涂鸦的描边 `#3f3a34` 与字 `#211f1b` 对比度约 **1.06**，整行成了深底深字；改用应用导航在用的 `bg-fg/7` + `text-fg` | 见「第三百五十四轮」一节（rebase 到 `9bee7c5f3` 之后重跑：`packages/web` `typecheck` **rc=0**；全仓 `oxlint` **0 警告 0 错误**（2719 文件）；22 个改动文件 `prettier --check` 干净；`pnpm --filter @adelie/web build` **rc=0**（入口 `index-BBuCzrjC.js`）；web 单测 **368 文件 / 4118 通过 / 2 跳过**；真服务端 + 真浏览器：网络面板 spec **3 passed**（内联行 → 面板按回合分组 → 暂停/继续；dock 选择器里的范围/类型/搜索；点一行 → 五个标签 → 事件流里「服务端写出·未采集」→ ← 返回），finder 三份 spec 回归 **6 passed**；配色用临时实例 + 涂鸦主题截图，四种组合（涂鸦/默认 × 浅/深）逐张看过，选中行的底色实测从 `#3f3a34`（描边色）变成 `#f1e5d3`（`--ui-fg` 7% 叠在 `#fff4e0` 上），字 `#1d1a16`；**整套 204 个 e2e 没重跑**，只跑了上述这几条） | `ef7064f85`…`540bf9519`（六笔面板 + 两笔用例如实按小步提交） |
 | 2026-11-27 | 发布 | **发 v0.8.6 并换装现网**（v0.8.5 之后攒下的十笔：**大附件改走独立直传**（用户点单，2MB 以上每文件一张进度卡，消息正文里只带落盘路径）、**对话页的「网络」面板**（用户点单，常驻标签、按回合分组、默认遮罩、只在本页内存）、**内置提示词推进到内核 2026-11-27**（交付物按用户的明确要求核对、卡住的检查先分清原因）、**工作区选择器选中行在涂鸦主题下的配色**（用户带截图报，对比度 1.06 → 12 上下），以及悬停提示长串折断、窄屏表格、桌宠通话失败文案、`input_subagent` 后台回报、清空数据第一步与停靠面板终端失败原因、涂鸦主题「运行中发送方式」按钮 六处小修；服务端新增一条上传路由，**没有数据库迁移**。发布提交 `bb0409bc3`（父 `95029dd6a`）+ 门禁修复 `658436797`，带注解的标签 `v0.8.6` 指 `658436797`；`main` 与标签都直推；门禁在 `/root/rel-086` 上**第二遍 rc=0 五步全绿**（第一遍 rc=1：`@adelie/ui` 的 `.ui-live` 缺 `data-live` 且不归 Dot/ProgressBar 写、`@adelie/ui-gallery` 缺直传接口的模拟，都修好后重跑）；三件载荷 114,520,461 / 57,297,876 / 150,593,459 + `validate-bundles.sh` 三件全过，桌面 deb 122,607,624 / AppImage 155,561,807 / exe 162,497,937；npm **29 个包**发到 0.8.6（`PUBLISH-ALL-DONE`，读侧 `@adelie/server` 当场仍是 0.8.5，属已知滞后）；GitHub Release **id `459986837`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T23:14:29Z）；3003 换上 v0.8.6 清单（旧清单与旧 exe 留 `.bak-20261127-v0715`）；现网 `/root/.adelie` 整棵换成 0.8.6、旧前端先拷回（`index-BCMo4EVQ.js`），新前端 `index-Bm3s3_u9.js` 由瞬时单元延后重启装进去） | 发布轮，逐项见「第三百五十五轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.6、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 658436797…`、前端入口 `index-Bm3s3_u9.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；`releases/latest` = v0.8.6 | `658436797`（发布） |
 | 2026-11-27 | 7.224 | **会折行的提示条，色调标记留在第一行**（上游 `08ee6d4d2` `#1897` 移植，照语义落、不是合分支；13 文件 / +101 −15，其中 `packages/ui` 源码 5 个（`components/feedback/notice/notice.tsx` 的开头块 `data-slot="lead"` + `items-start` 与 `icon` 槽 `min-h-[1lh]`、`notice-strip.tsx` 与 `hooks.ts` 的槽说明、`themes/modern.css` 与 `geek.css` 的 `::before` 挂到 lead 块首行）、`packages/ui-gallery` 3 个（提示板多行示例 + 中英文案 `wrappedBody`）、用例 3 个、changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：`Notice` 原来把标记在整个盒子居中，多行提示在现代主题下圆点停在第三行旁边、极客主题下 `[WARN]` 标签停在中间；现在标记随首行、横幅的落在条带内边距下，单行提示位置不变。**本地化**：本树主题是旧的单文件 css（上游已拆 recipes 目录），按语义重写那两段选择器；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与兼容性 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；`@adelie/ui-gallery` typecheck **rc=0**；`oxlint` **0 警告 0 错误**（2722 文件）；13 个改动文件 `prettier --check` 干净；`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **220 / 3215 / 6 跳过** · web **368 / 4118 / 2 跳过** · hmr 无测试文件；**真界面两态（组件画廊 7372，Playwright + 本机 chromium，数据不落仓库）**：同一探针在 `lib.html?topic=notices` 里量多行示例的标记中心与首行中心 —— 现代主题改前偏 **30px**、改后 **1px**；极客主题改前偏 **28px**、改后 **1px**；默认（github）主题改后 **1px**、圆点在第一行；单行 inline 提示两态标记中心都在盒中心（现代 77/77、极客 71/71）；两态三主题 console **0 error**；截图 `wrapped-{modern,geek,github}.png` 与 `measure-*.json` 在 scratchpad · 端口只用 7372，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `240ced3d2` |
+| 2026-11-27 | 7.225 | **大文件改成四路分片并行上传；网络面板的「模型」行能看到发给服务商的请求与响应**（**2026-11-27 第三百五十七轮**落地，用户点单：先报上传慢、再指明要看服务端发给模型服务商的请求体与响应体；core 3 文件（新 `llm/model-exchange.ts` + `generative-model.ts` 埋点）、server 7 文件（新 `services/multipart-uploads.ts`、新 `services/model-exchange-log.ts`、四条分片路由 + 一条查询路由、`app.ts` 装 sink）、web 8 文件、`ui-gallery` mock 补四条；**无数据库迁移、无新依赖**）：4MB × 四路、服务端预建稀疏文件按偏移写、全片到齐才 `link` 成正式名、单片失败只重传该片；模型记录环形 100 条、请求与响应各截 256KB、`data:` 长串换占位符、打开该行才拉取（用 `request_end` 的服务器时间戳配对） | 见「第三百五十七轮」一节（core/server/web/ui-gallery `tsc` rc=0；全仓 `oxlint` 0/0（2731 文件）；新单测 21 条全过；e2e 附件 3 条 + 网络面板 4 条全过；临时实例读到 3 条模型记录） | `a57ffda28`、`e8ace70d7`（演示站补上记录接口） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35919,3 +35920,46 @@ https 的 push 与 fetch 各失败一次（`GnuTLS recv error (-110)`），改�
 
 - 代码一笔：`240ced3d2`（`packages/ui` 5 个源码 / 文档文件、`packages/ui-gallery` 3 个、用例 3 个、
   changelog 一对）；台账（条目 7.224、上表那一行、本节）随本文件另起一笔。
+
+## 第三百五十七轮：大文件四路分片上传，网络面板能看模型请求与响应（2026-11-27，条目 7.225）
+
+**开工经过**：用户先报「155MB 的桌面安装包上传很慢，服务器在美国」。量下来服务器确实在洛杉矶
+（`64.83.0.75`，AS979 NetLab Global），但卡在 68.6MB 并不是慢：`adelie.lmliheng.work` 的反代
+`client_max_body_size` 只有 64M，nginx 读到 `Content-Length` 就回 413，三次请求 Adelie 一个字节都没
+收到。把该 server 块改到 310M（Adelie 附件上限 200MB，base64 的 task body 约 295MB）、`location /`
+加 `proxy_request_buffering off`、`client_body_timeout 300s`，实测 120MB 限速 5MB/s 边收边落盘、经
+nginx 155MB 201；顺手开 BBR（`/etc/sysctl.d/99-bbr.conf`）。随后用户点单做**分片并行上传**并说「做完
+就更新小版本」；开发中又指明网络面板要看的不是浏览器发往服务器的请求，而是**服务端发给模型服务商的
+请求体与响应体**，于是同一版里补上。
+
+**分片上传**（`services/multipart-uploads.ts` + `routes/sessions.ts` 四条路由）：客户端 `POST
+…/attachments/multipart` 报名字与大小，服务端在会话 scratchpad 预建稀疏文件、回 4MB 的分片计划；
+`PUT …/:uploadId/:index` 每片按偏移写（乱序、重复都无妨，长度逐字节校验）；`POST …/complete` 全片
+到齐才 `link` 成正式名（`wx` 语义，重名自动加后缀，绝不覆盖）；`DELETE …/:uploadId` 放弃并删半成品。
+`packages/web/src/api/multipart-upload.ts` 负责切片、四路并发、按片重试（4xx 不重试）、进度求和；
+`uploadSessionAttachment` 在 8MB 处分支，小文件仍走一次请求。环形状态在进程内存，重启即丢（前台操作，
+重传即可），一小时未完成的半成品由启动前与定时两次清扫删掉。
+
+**模型请求与响应**（`core/llm/model-exchange.ts` + `generative-model.ts` 埋点）：`streamGenerate`
+在开流前快照 `UniConfig`（system prompt、tools、其余参数）和 `[…history, 本次输入]`，在流里累积
+text/thinking/tool_call，结束时通过进程级 sink 上报；`server/services/model-exchange-log.ts` 是 sink
+的实现——环形 100 条，请求/响应各截 256KB，`data:` 长串换成 `<N chars>` 占位符，`GET
+/api/sessions/:id/model-exchanges?after=&limit=` 按会话返回。面板的「模型」行本来由流里的
+`request_begin/request_end` 画出，现在打开该行时按 `request_end` 的**服务器时间戳**匹配并拉取内容，
+填进现有的「请求」「响应」标签。
+
+**验证**：`core` / `server` / `web` / `ui-gallery` 的 `tsc --noEmit` 均 rc=0；全仓 `oxlint` 0 警告
+0 错误（2731 文件）；改动文件 `prettier --check` 干净；新单测 server `multipart-upload.test.ts` 8 条、
+`model-exchange.test.ts` 5 条，web `multipart-upload.test.ts` 5 条、`model-exchange-record.test.ts` 3
+条，全部通过；回归 `task-attachments` / `body-limit` / `message-upload-progress` / `network-panel` /
+`llm` / `generative-model-attribution` 全过；真服务端 + 真浏览器 e2e：附件上传三条（3MB 单次、9MB 三条
+分片、1MB 内联）与网络面板四条（新增「模型行显示请求与响应」）全过；临时实例 + mock LLM 的脚本读到
+3 条记录，`requestJson` 含 `systemPrompt/tools/config/messages`、`responseJson` 含模型文本。
+
+**遗留**：模型记录目前默认常开、无界面开关（`setModelExchangeSink(null)` 即完全停用）；用户说若后
+期占用大再加开关。整套 204 个 e2e 没有重跑，只跑了上述两组 spec。
+
+### 提交
+
+- 代码一笔：`a57ffda28`（core 3 文件、server 7 文件、web 8 文件、ui-gallery 1 文件，含新单测与新
+  e2e）；台账（条目 7.225、上表那一行、本节）与版本号、发布正文随发布提交另起一笔。
