@@ -1,10 +1,11 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   FrameReader,
+  bridgeEndpoint,
   defaultPermissions,
   encodeFrame,
   type AnyFrame,
@@ -15,9 +16,9 @@ import { AdbBridge } from "../src/bridge.js";
 import { DEVICES_L, GETPROP, scriptedBinaryRunner, scriptedRunner, TINY_PNG } from "./helpers.js";
 
 /**
- * The bridge against a host on a real Unix socket: the same code path the desktop app and the
- * server use, minus Windows. It asserts the handshake, the environment frame, a device report,
- * a layered snapshot, a command round trip and the second permission lock.
+ * The bridge against a host on the endpoint the product itself computes — a Unix socket under
+ * the data root, a named pipe on Windows. It asserts the handshake, the environment frame, a
+ * device report, a layered snapshot, a command round trip and the second permission lock.
  */
 
 class FakeHost {
@@ -88,7 +89,15 @@ class FakeHost {
 }
 
 const dir = mkdtempSync(path.join(os.tmpdir(), "adelie-bridge-"));
-const endpoint = path.join(dir, "device-bridge.sock");
+// Go through the product's own rule for where the bridge listens: on Windows that is a named
+// pipe (a plain path there gets EACCES from `net.listen`), and the mkdtemp suffix keeps two
+// runs from sharing one pipe.
+const endpoint = bridgeEndpoint(dir, path.basename(dir), process.platform);
+// The server side (BridgeHub) creates the socket's directory with 0700 before listening; the
+// fake host here has to do the same when the endpoint is a path. A pipe name needs no directory.
+if (!endpoint.startsWith("\\\\.\\pipe\\")) {
+  mkdirSync(path.dirname(endpoint), { recursive: true, mode: 0o700 });
+}
 const host = new FakeHost(endpoint);
 const calls: string[] = [];
 const runner = scriptedRunner(
@@ -135,7 +144,7 @@ afterAll(async () => {
   await host.close();
 });
 
-describe("AdbBridge over a Unix socket", () => {
+describe("AdbBridge over the bridge endpoint", () => {
   it("says hello, then what adb it found", async () => {
     const hello = await host.waitFor<Extract<AnyFrame, { t: "hello" }>>((f) => f.t === "hello");
     expect(hello.bridge).toMatchObject({

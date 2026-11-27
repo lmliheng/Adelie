@@ -45,7 +45,14 @@ afterAll(() => {
   // The tmp directory is inside the machine's tmp; the test runner owns it.
 });
 
-describe("AdbClient over a real executable", () => {
+// A fake adb has to be a real executable, and on a stock Windows runner the only way to make
+// one is a .cmd/.bat — which Node refuses to spawn without a shell (the fix for CVE-2024-27980)
+// while `nodeAdbRunner` deliberately spawns without one, so that nothing from a phone's shell
+// can reach the host's. Real adb is adb.exe and spawns fine there; this fixture cannot, so the
+// process layer is pinned on Linux/macOS only.
+const describeRealExecutable = describe.skipIf(process.platform === "win32");
+
+describeRealExecutable("AdbClient over a real executable", () => {
   it("reads the version", async () => {
     expect(await new AdbClient(file).version()).toBe("1.0.41");
   });

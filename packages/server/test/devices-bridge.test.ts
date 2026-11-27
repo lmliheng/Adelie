@@ -1,11 +1,8 @@
 /**
- * The local channel, end to end: a fake bridge connects over the Unix socket (the Windows pipe
- * is the same code path with a different path), reports itself and a device, and then takes a
- * command the service issued and answers it. Also pins what a protocol mismatch and a
- * disconnect do.
- *
- * These run on Linux's Unix socket; the Windows named pipe is the same `net` calls with
- * `\\.\pipe\…` as the path and cannot be exercised here (see the report).
+ * The local channel, end to end: a fake bridge connects to the address the hub reports — a
+ * Unix socket under the data root, the Windows named pipe elsewhere — reports itself and a
+ * device, and then takes a command the service issued and answers it. Also pins what a
+ * protocol mismatch and a disconnect do.
  */
 import fs from "node:fs";
 import net from "node:net";
@@ -76,8 +73,11 @@ describe("the local bridge channel", () => {
     db = openDatabase(path.join(root, "web.db"));
     const repo = new DevicesRepo(db);
     service = new DevicesService(repo, new SnapshotStore(root), new DeviceAudit(repo), () => {});
-    endpoint = path.join(root, "test-bridge.sock");
-    hub = new BridgeHub(repo, service, { root, installId: "test", log: () => {}, endpoint });
+    // No endpoint override: the hub is asked where it listens, so the test travels the same
+    // rule every real bridge does — a Unix socket under the root, a named pipe on Windows
+    // (a plain path there fails `net.listen` with EACCES).
+    hub = new BridgeHub(repo, service, { root, installId: "test", log: () => {} });
+    endpoint = hub.address();
     service.attachDispatcher(hub);
     hub.start();
   });
@@ -224,6 +224,8 @@ describe("the local bridge channel", () => {
       "offline",
     );
     hub.dispose();
-    expect(fs.existsSync(endpoint)).toBe(false);
+    // POSIX unlinks the socket file on close, and a stale one would make the next start fail;
+    // a named pipe has no file to leave behind (the pipe itself goes with its handle).
+    if (process.platform !== "win32") expect(fs.existsSync(endpoint)).toBe(false);
   });
 });
