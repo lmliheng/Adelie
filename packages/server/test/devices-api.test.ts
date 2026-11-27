@@ -225,6 +225,23 @@ describe("the devices API", () => {
     });
   });
 
+  it("answers an unknown device with 404 on detail, events and commands", async () => {
+    const admin = await loginAdmin(t.app);
+    const api = apiClient(t.app, admin.cookie);
+    const base = "/api/projects/default_project/devices/no-such-device";
+    for (const path of [base, `${base}/events`]) {
+      const res = await api.get(path);
+      expect(res.status, path).toBe(404);
+      expect(((await res.json()) as ErrorBody).error.code).toBe("not_found");
+    }
+    const command = await api.post(`${base}/commands`, {
+      op: "shell.exec",
+      args: { command: "id" },
+    });
+    expect(command.status).toBe(404);
+    expect(((await command.json()) as ErrorBody).error.code).toBe("not_found");
+  });
+
   it("starts a wireless pairing QR on the bridge, for an admin only", async () => {
     const admin = await loginAdmin(t.app);
     const member = await provisionUser(t.app, "dave");

@@ -76,8 +76,12 @@ export function devicesRoutes(deps: DevicesRouteDeps): Hono<AppEnv> {
   app.get("/:deviceId", (c) => {
     const projectId = requireValidId(c, "projectId");
     const deviceId = requireValidId(c, "deviceId");
-    const detail = deps.devices.detail(deviceId, projectId, user(c));
-    return c.json({ ...detail } satisfies DeviceDetailResponse);
+    try {
+      const detail = deps.devices.detail(deviceId, projectId, user(c));
+      return c.json({ ...detail } satisfies DeviceDetailResponse);
+    } catch (err) {
+      httpError(err);
+    }
   });
 
   app.get("/:deviceId/events", (c) => {
@@ -85,9 +89,13 @@ export function devicesRoutes(deps: DevicesRouteDeps): Hono<AppEnv> {
     const deviceId = requireValidId(c, "deviceId");
     const raw = Number.parseInt(c.req.query("limit") ?? "", 10);
     const limit = Number.isFinite(raw) ? raw : undefined;
-    return c.json({
-      events: deps.devices.events(deviceId, projectId, user(c), limit),
-    } satisfies DeviceEventListResponse);
+    try {
+      return c.json({
+        events: deps.devices.events(deviceId, projectId, user(c), limit),
+      } satisfies DeviceEventListResponse);
+    } catch (err) {
+      httpError(err);
+    }
   });
 
   // Bridge-level: Android 11's wireless pairing starts before any device exists. Admin-only:
