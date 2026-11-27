@@ -519,7 +519,7 @@ export function DevicesPage() {
                 {S.devices.pair.code(pairing.code)}
               </p>
               <p className="text-center text-xs text-fg-muted">
-                {S.devices.pair.expires(pairing.expiresAt)}
+                {S.devices.pair.expires(when(pairing.expiresAt, locale))}
               </p>
               <p className="text-xs text-fg-muted">{S.devices.pair.done}</p>
             </>
