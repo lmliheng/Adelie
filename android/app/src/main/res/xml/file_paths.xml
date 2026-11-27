@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 只放开这三层给外部应用读/写：
+     share  导出任务日志
+     photos 网页里 <input type="file" accept="image/*" capture> 拍照的输出文件
+     videos 网页里 <input type="file" accept="video/*" capture> 录像的输出文件 -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="share" path="share/" />
+    <cache-path name="photos" path="photos/" />
+    <cache-path name="videos" path="videos/" />
+</paths>

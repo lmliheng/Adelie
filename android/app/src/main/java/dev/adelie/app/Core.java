@@ -41,6 +41,15 @@ final class Core {
     static volatile boolean ready;
     private static volatile Process proc;
     private static volatile boolean starting;
+    /** 用户自己停的（不是事故），意外退出时看它决定要不要拉起。 */
+    private static volatile boolean stopping;
+    private static volatile Context appCtx;
+    private static final Supervisor SUPERVISOR = new Supervisor();
+    private static final android.os.Handler MAIN =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+    private static volatile Runnable pendingRestart;
+    /** 单测替换自动拉起的动作；null = 真的重新起进程。 */
+    static volatile Runnable restartAction;
 
     private static final Pattern STARTED =
             Pattern.compile("penguin-server started:\\s*(http://[^\\s:]+:\\d+)");
@@ -55,6 +64,8 @@ final class Core {
             starting = true;
         }
         final Context app = ctx.getApplicationContext();
+        appCtx = app;
+        stopping = false;
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -64,6 +75,10 @@ final class Core {
                     extractIfNeeded(app, root);
                     phase = "启动 Adelie 服务…";
                     launch(app, root);
+                    // 进程已经起来了：放开 starting，否则自动拉起会被「正在启动」挡掉
+                    synchronized (LOCK) {
+                        starting = false;
+                    }
                 } catch (Throwable t) {
                     phase = "启动失败：" + t;
                     log(t.toString());
@@ -77,6 +92,13 @@ final class Core {
     }
 
     static void stop() {
+        stopping = true;
+        Runnable pending = pendingRestart;
+        if (pending != null) {
+            MAIN.removeCallbacks(pending);
+            pendingRestart = null;
+        }
+        SUPERVISOR.reset();
         Process p = proc;
         proc = null;
         if (p != null) {
@@ -92,6 +114,14 @@ final class Core {
         }
     }
 
+    /** 界面用的「出事了」判断：红横幅 + 重试按钮都看它。 */
+    static boolean failed() {
+        String p = phase == null ? "" : phase;
+        return p.startsWith("启动失败") || p.startsWith("服务已退出")
+                || p.startsWith("服务意外退出") || p.startsWith("服务反复退出")
+                || p.startsWith("正在重启");
+    }
+
     static boolean alive() {
         Process p = proc;
         return p != null && p.isAlive();
@@ -102,6 +132,11 @@ final class Core {
         synchronized (LINES) {
             return new ArrayList<>(LINES);
         }
+    }
+
+    /** 给崩溃兜底这类「不在 Core 里发生、但该进运行日志」的地方补一行。 */
+    static void note(String line) {
+        log(line);
     }
 
     private static void log(String line) {
@@ -262,6 +297,7 @@ final class Core {
                             baseUrl = m.group(1);
                             phase = "服务已就绪";
                             ready = true;
+                            SUPERVISOR.started(System.currentTimeMillis());
                             log("监听：" + baseUrl);
                         }
                         Matcher c = CLAIM.matcher(line);
@@ -279,12 +315,78 @@ final class Core {
                 } catch (InterruptedException ignored) {
                     Thread.currentThread().interrupt();
                 }
+                if (proc == p) proc = null;
                 log("服务进程退出，code=" + code);
-                ready = false;
-                if (phase.startsWith("服务已就绪")) phase = "服务已退出（code=" + code + "）";
+                onServiceExit(code);
             }
         }, "adelie-log");
         t.setDaemon(true);
         t.start();
+    }
+
+    // ---------------------------------------------------------------- 看门狗
+
+    /**
+     * 服务进程退出：用户自己停的就收掉，意外的按 {@link Supervisor} 的退避计划拉起。
+     * 界面靠 {@link #phase} 显示「几秒后自动重启」，起来以后照常变回「服务已就绪」。
+     */
+    static void onServiceExit(int code) {
+        ready = false;
+        baseUrl = null;
+        claimUrl = null;
+        long delay = SUPERVISOR.onExit(System.currentTimeMillis(), stopping);
+        if (delay == Supervisor.USER_STOPPED) {
+            phase = "已停止";
+            return;
+        }
+        if (delay == Supervisor.GIVE_UP) {
+            phase = "服务反复退出（code=" + code + "）：看运行日志，或点重试";
+            log("放弃自动重启：连续退出 " + SUPERVISOR.failures() + " 次");
+            return;
+        }
+        final int attempt = SUPERVISOR.failures();
+        phase = "服务意外退出（code=" + code + "），" + Math.max(1, delay / 1000) + " 秒后自动重启…";
+        log("服务意外退出（code=" + code + "），" + delay + "ms 后第 " + attempt + " 次自动拉起");
+        Runnable restart = new Runnable() {
+            @Override
+            public void run() {
+                pendingRestart = null;
+                if (stopping) return;
+                log("自动拉起第 " + attempt + " 次");
+                phase = "正在重启 Adelie 服务…";
+                Runnable action = restartAction;
+                if (action != null) {
+                    action.run();
+                    return;
+                }
+                synchronized (LOCK) {
+                    starting = false;
+                }
+                Context ctx = appCtx;
+                if (ctx == null) {
+                    phase = "服务已退出：没有应用上下文，起不来了";
+                    return;
+                }
+                start(ctx);
+            }
+        };
+        pendingRestart = restart;
+        MAIN.postDelayed(restart, delay);
+    }
+
+    /** 单测用：把看门狗的状态清干净（不碰真实进程）。 */
+    static void resetWatchdogForTest() {
+        Runnable pending = pendingRestart;
+        if (pending != null) MAIN.removeCallbacks(pending);
+        pendingRestart = null;
+        stopping = false;
+        restartAction = null;
+        SUPERVISOR.reset();
+        proc = null;
+        starting = false;
+        ready = false;
+        baseUrl = null;
+        claimUrl = null;
+        phase = "未启动";
     }
 }

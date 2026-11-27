@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 需要人确认时才出现的卡片：允许一次 / 以后都允许 / 本轮免确认 / 取消。
+     小屏或理由很长时只让文字区滚动，按钮永远留在底部（ControlOverlay.fitCard 调高度）。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cf_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/ov_card"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="12dp">
+
+    <ScrollView
+        android:id="@+id/cf_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fadeScrollbars="false">
+
+        <LinearLayout
+            android:id="@+id/cf_texts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/cf_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/control_confirm_title"
+                android:textColor="@color/control_text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/cf_reason"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/control_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/cf_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/control_confirm_hint"
+                android:textColor="@color/control_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 倒计时放在滚动区外面：卡片再长，「还有多久自动取消」也得一眼看得到 -->
+    <TextView
+        android:id="@+id/cf_timer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/control_muted"
+        android:textSize="11sp" />
+
+    <LinearLayout
+        android:id="@+id/cf_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/cf_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ov_button"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/control_cancel"
+            android:textColor="@color/control_text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/cf_allow_task"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/ov_button"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/control_allow_task"
+            android:textColor="@color/control_text"
+            android:textSize="13sp" />
+
+        <!-- 「以后都允许」：把这个应用记下来，普通动作不再弹卡；付款、删除这类硬边界照样问 -->
+        <TextView
+            android:id="@+id/cf_allow_app"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/ov_button"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/control_allow_app"
+            android:textColor="@color/control_text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/cf_allow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/ov_button_primary"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/control_allow_once"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>

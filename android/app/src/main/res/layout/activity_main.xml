@@ -46,6 +46,52 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- 首屏提醒：无障碍没开时出现；「去开启」直达系统开关页，✕ 之后本版本不再打扰 -->
+        <LinearLayout
+            android:id="@+id/hint_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="2dp"
+            android:paddingBottom="2dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/hint_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/hint_accessibility"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/hint_open"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:text="@string/hint_open" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/hint_close"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/hint_close_desc"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:text="@string/hint_close"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
         <FrameLayout
             android:id="@+id/content"
             android:layout_width="match_parent"
@@ -68,6 +114,11 @@
 
             <include
                 layout="@layout/settings_page"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <include
+                layout="@layout/journal_page"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 

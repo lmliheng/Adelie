@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  手机操控（无障碍）的声明。系统按这份配置告诉服务它能读什么、能做什么：
+    canRetrieveWindowContent  读取当前窗口的控件树（文字、描述、可点区域）
+    canPerformGestures        自己合成点按/滑动/长按手势
+    canTakeScreenshot         API 30+ 直接截图（不需要 MediaProjection 授权弹窗）
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/accessibility_description"
+    android:summary="@string/accessibility_summary"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewFocused|typeViewScrolled"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:notificationTimeout="100" />

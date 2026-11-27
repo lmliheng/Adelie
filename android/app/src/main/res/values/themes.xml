@@ -3,11 +3,11 @@
     <!-- Material 3：跟随 Adelie 的品牌色，浅色模式 -->
     <style name="Theme.Adelie" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
-        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnPrimary">@color/accent_on</item>
         <item name="colorPrimaryContainer">@color/accent_container</item>
         <item name="colorOnPrimaryContainer">@color/accent_on_container</item>
         <item name="colorSecondary">@color/accent</item>
-        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorOnSecondary">@color/accent_on</item>
         <item name="colorSecondaryContainer">@color/accent_container</item>
         <item name="colorOnSecondaryContainer">@color/accent</item>
         <item name="colorSurface">@color/surface</item>

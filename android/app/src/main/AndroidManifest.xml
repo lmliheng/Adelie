@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="4"
-    android:versionName="1.0.1-beta">
+<!-- versionCode / versionName 只由 app/build.gradle 管，别在这儿再写一份（会跟版本号对不上） -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -9,7 +8,18 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 更新包下完由我们自己叫系统安装器；8.0 起要先有这个权限，用户还要在设置里允许 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+    <!-- 手机操控要能列出并打开其他应用（Android 11+ 的包可见性） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <!-- debuggable：测试包，留出 adb run-as（看应用私有目录、跑 CLI）与 WebView 远程调试 -->
     <application
@@ -23,14 +33,34 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Adelie">
 
+        <!-- singleTop：别的应用「分享」文字进来时，正在跑的这一份直接接住（onNewIntent），
+             不再叠一个新的界面上去 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 从浏览器、微信、笔记里「分享」一段文字或一个链接过来 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- 从相册、浏览器、文件管理器里「分享」图片 / 文件过来 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
 
@@ -38,5 +68,63 @@
             android:name=".BootService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- 后台屏：MediaProjection 期间必须有这个类型的前台服务（Android 14 起强制） -->
+        <service
+            android:name=".ProjectionService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <!-- 检查更新：下载完成的通知，用来自动拉起系统安装器 -->
+        <receiver
+            android:name=".UpdateInstallReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 导出任务日志：把 cache/share 下的文件借给分享面板选中的 App 临时读 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- 「更新没成」那条通知里「重新下载」的落点 -->
+        <receiver
+            android:name=".UpdateActionReceiver"
+            android:exported="false" />
+
+        <!-- 通知栏上「暂停 / 停止」两个按钮的落点；只有自己的 PendingIntent 能发过来 -->
+        <receiver
+            android:name=".control.ControlActionReceiver"
+            android:exported="false" />
+
+        <!-- 系统要求屏幕录制授权由前台 Activity 发起，这一页是透明的，只弹系统对话框 -->
+        <activity
+            android:name=".control.ProjectionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- 手机操控：读屏 + 手势 + 截图。只有系统能用 BIND_ACCESSIBILITY_SERVICE 绑定 -->
+        <service
+            android:name=".control.AdelieAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
     </application>
 </manifest>

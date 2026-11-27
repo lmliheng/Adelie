@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      深色模式照网页端那套来：纯黑底，不用蓝灰色；层次全靠 1px 细线和一级灰阶，
+      强调色在深底上换成亮一档的蓝（#8AB4F8），不然 #015DFC 在黑色上发闷。
+    -->
+    <color name="surface">#FF000000</color>
+    <color name="surface_muted">#FF0D0D0D</color>
+    <color name="ink">#FFF3F4F6</color>
+    <color name="ink_muted">#FF9CA3AF</color>
+    <color name="accent">#FF8AB4F8</color>
+    <color name="accent_container">#FF14243C</color>
+    <color name="accent_on_container">#FF8AB4F8</color>
+    <!-- 亮蓝底上要放深色字，白字会看不清 -->
+    <color name="accent_on">#FF0B1220</color>
+    <color name="divider">#FF1F1F1F</color>
+    <color name="outline">#FF303030</color>
+    <color name="nav_surface">#FF0D0D0D</color>
+    <color name="surface_high">#FF141414</color>
+    <color name="surface_highest">#FF1F1F1F</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="danger">#FFF87171</color>
+    <color name="danger_container">#FF2A1315</color>
+    <color name="ic_launcher_background">#FFFEFEFE</color>
+
+    <!-- 悬浮胶囊本来就是深色的，深色模式下把描边压暗一点就不会糊在黑底上 -->
+    <color name="control_bg">#F22A3039</color>
+    <color name="control_line">#40FFFFFF</color>
+    <color name="control_text">#FFF2F5F9</color>
+    <color name="control_muted">#FF9BA6B4</color>
+    <color name="control_button">#33FFFFFF</color>
+    <color name="control_danger">#B3D64545</color>
+    <color name="control_glow">#FF3B82F6</color>
+
+    <color name="log_bg">#FF0D1117</color>
+    <color name="log_text">#FFE6EDF3</color>
+    <color name="log_accent">#FF58A6FF</color>
+</resources>

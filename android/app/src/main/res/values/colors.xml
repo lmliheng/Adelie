@@ -8,6 +8,8 @@
     <color name="accent">#FF015DFC</color>
     <color name="accent_container">#FFE3ECFF</color>
     <color name="accent_on_container">#FF0B3D91</color>
+    <!-- 浅色模式下强调色是深蓝，白字；深色模式的强调色是浅蓝，字要反过来（见 values-night） -->
+    <color name="accent_on">#FFFFFFFF</color>
     <color name="divider">#FFE5E7EB</color>
     <color name="outline">#FF98A2B3</color>
     <color name="nav_surface">#FFF7F8FA</color>
@@ -17,6 +19,15 @@
     <color name="danger">#FFB42318</color>
     <color name="danger_container">#FFFEF2F2</color>
     <color name="ic_launcher_background">#FFFEFEFE</color>
+
+    <!-- 手机操控的悬浮条：系统浮层上用的深色胶囊 -->
+    <color name="control_bg">#F21B212B</color>
+    <color name="control_line">#33FFFFFF</color>
+    <color name="control_text">#FFF2F5F9</color>
+    <color name="control_muted">#FF9BA6B4</color>
+    <color name="control_button">#33FFFFFF</color>
+    <color name="control_danger">#B3D64545</color>
+    <color name="control_glow">#FF3B82F6</color>
 
     <!-- 运行日志浮层（跟 GitHub 暗色深底一致） -->
     <color name="log_bg">#FF0D1117</color>

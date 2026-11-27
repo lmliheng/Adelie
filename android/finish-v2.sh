@@ -4,8 +4,7 @@ set -eu
 HERE="$(cd "$(dirname "$0")" && pwd)"
 NODE=/root/build/node/arm64/node-v24.22.3/out/Release/node
 R=/opt/android-sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf
-VERSION="${VERSION:-1.0.1}"
-BASE_URL="${BASE_URL:-http://127.0.0.1:3003}"
+VERSION=0.2.0
 
 [ -x "$NODE" ] || { echo "missing $NODE" >&2; exit 1; }
 
@@ -25,10 +24,10 @@ bash publish-3003.sh "build/adelie-android-arm64-$VERSION.apk"
 
 echo "== 公网校验"
 cd /tmp
-curl -s -m 600 -o "/tmp/dl-$VERSION.apk" "$BASE_URL/downloads/android/adelie-android-arm64-$VERSION.apk" \
+curl -s -m 600 -o "/tmp/dl-$VERSION.apk" "http://110.42.63.153:3003/downloads/android/adelie-android-arm64-$VERSION.apk" \
   -w 'downloaded %{size_download} bytes http=%{http_code}\n'
 sha256sum "/tmp/dl-$VERSION.apk"
-curl -s "$BASE_URL/downloads/index.json" | python3 -c "
+curl -s http://110.42.63.153:3003/downloads/index.json | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 for v in d['versions']:
