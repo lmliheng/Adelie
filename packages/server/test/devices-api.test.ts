@@ -224,4 +224,52 @@ describe("the devices API", () => {
       data: "Pixel 8",
     });
   });
+
+  it("starts a wireless pairing QR on the bridge, for an admin only", async () => {
+    const admin = await loginAdmin(t.app);
+    const member = await provisionUser(t.app, "dave");
+    const adminApi = apiClient(t.app, admin.cookie);
+    expect(
+      (await adminApi.post("/api/projects/default_project/members", { userId: "dave" })).status,
+    ).toBe(201);
+
+    const refused = await apiClient(t.app, member.cookie).post(
+      "/api/projects/default_project/devices/pair",
+      {},
+    );
+    expect(refused.status).toBe(403);
+    expect(((await refused.json()) as ErrorBody).error.code).toBe("admin_required");
+
+    const running = adminApi.post("/api/projects/default_project/devices/pair", {});
+    await waitFor(
+      async () =>
+        bridge.frames.some((f) => f.t === "command" && f.command.op === "pair.wifi.start"),
+      "the pairing command",
+    );
+    const command = bridge.frames.find(
+      (f) => f.t === "command" && f.command.op === "pair.wifi.start",
+    );
+    if (command?.t !== "command") throw new Error("no pairing command frame");
+    expect(command.command.deviceId).toBe("bridge-api");
+    bridge.send({
+      t: "result",
+      result: {
+        id: command.command.id,
+        ok: true,
+        data: {
+          pairing: {
+            qr: "WIFI:T:ADB;S:adb-abc;P:123456;;",
+            serviceName: "adb-abc",
+            code: "123456",
+            expiresAt: "2026-11-27T00:05:00.000Z",
+          },
+        },
+      },
+    });
+    const res = await running;
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as DeviceCommandResponse).data).toMatchObject({
+      pairing: { code: "123456", serviceName: "adb-abc" },
+    });
+  });
 });

@@ -90,6 +90,22 @@ export function devicesRoutes(deps: DevicesRouteDeps): Hono<AppEnv> {
     } satisfies DeviceEventListResponse);
   });
 
+  // Bridge-level: Android 11's wireless pairing starts before any device exists. Admin-only:
+  // the answer is a one-time QR that lets a phone join this instance.
+  app.post("/pair", async (c) => {
+    requireAdmin(c, "pair a phone");
+    const projectId = requireValidId(c, "projectId");
+    const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+    const bridgeId =
+      typeof body?.bridgeId === "string" && body.bridgeId !== "" ? body.bridgeId : undefined;
+    try {
+      const result = await deps.devices.pairWifi(bridgeId, actor(c), projectId, user(c));
+      return c.json({ ...result } satisfies DeviceCommandResponse);
+    } catch (err) {
+      httpError(err);
+    }
+  });
+
   app.post("/:deviceId/commands", async (c) => {
     const projectId = requireValidId(c, "projectId");
     const deviceId = requireValidId(c, "deviceId");

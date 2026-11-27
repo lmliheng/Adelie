@@ -259,6 +259,52 @@ export class DevicesService {
   /* -------------------------------- commands ----------------------------- */
 
   /**
+   * Starts the Android 11 pairing QR on a bridge. This is the one action that happens before a
+   * device exists, so it is addressed to the bridge rather than to a device: an admin picks
+   * which bridge (the connected one by default), and the bridge answers with the QR payload.
+   * The background pairing result arrives as bridge log lines; there is nothing to wait for.
+   */
+  async pairWifi(
+    bridgeId: string | undefined,
+    actor: string,
+    projectId: string,
+    user: DeviceUser,
+  ): Promise<DeviceCommandResult> {
+    if (!user.isAdmin) throw failure("capability_denied", "Only an admin can pair a phone.");
+    const dispatcher = this.dispatcher;
+    if (dispatcher === null) throw failure("bridge_offline", "No device bridge is running.");
+    const bridges = dispatcher.bridges();
+    const bridge =
+      bridgeId === undefined
+        ? bridges.find((candidate) => candidate.online)
+        : bridges.find((candidate) => candidate.id === bridgeId);
+    if (bridge === undefined) {
+      throw bridgeId === undefined
+        ? failure("bridge_offline", "No device bridge is connected.")
+        : failure("not_found", `No bridge ${bridgeId}.`);
+    }
+    if (!dispatcher.isOnline(bridge.id)) {
+      throw failure("bridge_offline", `The bridge ${bridge.name} is not connected.`);
+    }
+    const command: DeviceCommand = {
+      id: `pair-${this.now().getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+      deviceId: bridge.id,
+      op: "pair.wifi.start",
+    };
+    const result = await dispatcher.sendCommand(bridge.id, command);
+    this.audit.record({
+      deviceId: bridge.id,
+      kind: "action",
+      actor,
+      action: "pair",
+      detail: { bridgeId: bridge.id, projectId, ok: result.ok, code: result.error?.code ?? null },
+    });
+    if (!result.ok && result.error !== undefined)
+      throw failure(result.error.code, result.error.message);
+    return result;
+  }
+
+  /**
    * Runs one command against one device, after the two checks that make this model safe:
    * the capability must be granted on THIS device, and a write must carry the caller's
    * approval for THIS command. Both refusals are audited — a refusal is what an audit is for.
