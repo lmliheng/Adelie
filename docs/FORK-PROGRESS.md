@@ -4099,6 +4099,25 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       同一条探针 → 换到下侧栏和换回右侧栏两次都是**搜索词空、本次回复/全部选中、详情关上**；本笔之下两次
       都留在详情与「响应」页。见「第三百六十一轮」一节。
 
+- [x] **7.230 设备桥接上宿主：`@adelie/device` 的帧 + 服务端的注册表 / 六张表 / 每台设备的权限与审计**
+      （**2026-11-28 第三百六十二轮**接手落地，提交见「已完成的轮次」；`packages/device` 新导出
+      `endpoint.ts` / `ids.ts`，帧里多一个 `env`；`packages/server` 新 `db/repos/devices.ts`、`devices/`
+      五个文件（模块 / 桥 / 服务 / 快照 / 审计）、`http/routes/devices.ts`、`db/schema.ts` 与
+      `migrations.ts` 的 migration 18、`platform.ts` 注册 `DevicesModule`，四份单测 —— **新增接口与一个
+      本地 socket，不动已存数据，无新依赖**）：桥把手机上的一切报给宿主，宿主只读地认出它、记下它；
+      权限按每台设备分开（读默认开、写默认关，每条写命令要一次显式同意）；设备是实例级的，路径里的
+      Project 决定看得见与用得了哪些，另一台 Project 要用它得由管理员授权。审计只记「谁在什么时候对
+      哪台设备做了什么」，通知正文 / 文件内容 / shell 输出一律不进来。见「第三百六十二轮」一节。
+- [x] **7.231 网络面板的事件流页读得到服务端写出了什么**（**2026-11-28 第三百六十二轮**落地，
+      提交见「已完成的轮次」；`packages/server` 新 `services/stream-writes.ts`、`http/sse.ts` 认
+      `requestId` 查询参数、`http/routes/sessions.ts` 多 `GET /api/sessions/:id/stream-writes`；
+      `packages/web` 的 `api/sse.ts` 给每条连接起名、`features/network/stream-write-view.ts`（纯逻辑）
+      与面板的写帧列表、两份单测、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **新增只读接口，
+      无新依赖，记录只在内存里**）：一条安静下来的流原先答不了「是没写，还是写了没送到」——浏览器那
+      一侧数着自己的帧，服务端那一侧写着「未采集」。现在服务端把写出的每一帧记在一个有界环上（最近
+      50 条连接、每条 500 帧，挤掉的条数写明），面板读回来画在浏览器计数旁边。见「第三百六十二轮」一节。
+
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7358,6 +7377,8 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-27 | 7.227 | **网络面板的模型行：取的过程中、取不到、本来就没有，三件事分开说**（**2026-11-27 第三百五十九轮**落地；`packages/web` 新纯逻辑 `features/network/model-exchange-pick.ts`（`pickModelExchange` ＋ `MODEL_EXCHANGE_MATCH_MS`）、`network-panel.tsx`（`ModelBodyNote` 三态、`BodyBlock` / `HeaderTable` 的 `empty` 参数、详情按行 id 挂载）、两本词典各 3 句、新单测 4 条、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **不碰接口、不动数据、无新依赖**）：模型行取不到请求体 / 响应体时，过去三栏落到与「真的发了空请求」一样的 `（空）`；现在「正在取」/「服务器上没有这次调用的记录（只保留最近 100 次）」/「取不到 ＋ 服务端那句话」三句分开，模型行的空请求头表写「未采集」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；全仓 `oxlint` **0 警告 0 错误**（2732 文件）；8 个改动文件 `prettier --check` 干净；`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **371 / 4130 / 2 跳过**（+1 文件 / +4 条即本笔）；**新单测 4 passed**；`network-panel.spec.mjs` **5 passed**（含新用例）；**反证**：面板退回 `HEAD`、重建后新用例 **1 failed**；真浏览器四态探针（找到 / 正在取 / 没有记录 / 被拒）＋ 英文窗口各一态，读到的正是这四句话，两态 console 只有既有的 `GET …/machines` 403、无 pageerror | `b060e0a10` |
 | 2026-11-27 | 7.228 | **外置主题的深色灰阶对上角色：200 是字色，深色填充落在填充 token 上**（**2026-11-27 第三百六十轮**落地；`packages/core` 的 `PALETTE_BRIDGE_DARK` 一行 ＋ 用例两条、`packages/web` 13 个源码文件的类名（`dark:bg-gray-700/800` → `dark:bg-fill-neutral`，含 `lib/tone.ts` 的灰档）、描边守卫多一条「深色灰档填充 + 灰阶字色」的对子、changelog 一对 —— **不碰接口、不动数据、无新依赖**）：导入主题的深色桥把 `--color-gray-200` 系到描边色，而两套内置深色档都把它当字色、应用里 41 处 `dark:text-gray-200` 也是这么用 —— 手绘涂鸦深色下 Agent 的占位符 chip 字与底同色（**1.00**），现在 **9.9**；带字的深色灰档填充同理换成 `dark:bg-fill-neutral`，同一主题下 **2.71 → 6.05** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 214 接口 / 647 类型）；全仓 `oxlint` **0 警告 0 错误**；改动 18 个文件 `prettier --check` 干净、`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 / 6 跳过** · ui **133 / 1119** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **372 / 4134 / 2 跳过**（含守卫新的一条）；**反证**：插件页那一处换回 `dark:bg-gray-800` → 守卫 **1 failed**，恢复后 4 passed；桥表退回旧值重建 core、真服务端量同一枚 chip → **2.23**，恢复后 **9.9**；真浏览器（doodle 浅/深、github 深）四类取样全部量过，浅色改前改后逐页计数不变，console / pageerror 全 0 | `4b202f34d` |
 | 2026-11-27 | 7.229 | **换布局不再丢掉网络面板的读者位置：搜索词、范围、类型、打开的那条记录与它的详情页**（**2026-11-27 第三百六十一轮**落地；`packages/web` 新 `features/network/network-place.ts`、`features/network/net-focus.ts` 的「已执行」戳与单调加盖、`network-panel.tsx` 从到来的位置起算且每次改动写记录、`builtin-dock-panels.tsx` 的 `NetworkPanelBody` 算出所在的面、两份单测（7 + 4 条）、`network-panel.spec.mjs` 多 1 条、changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：网络面板晚于「换布局不再丢掉…」那一族（7.152–7.157），阅读状态一直只在组件自己的 `useState` 里，换布局即清空；照 `trace-place.ts` 的规则按对话存一份位置（只在跨面时恢复、恰好是面板自己打开时的样子就不记、发出去的是拷贝），并把「看这一回合」的跳转改成由执行它的面板体记成已执行（原先每挂载一次就重放，会把刚恢复的范围与记录清掉） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 214 接口 / 647 类型）；`oxlint` 改动 11 文件 **0 警告 0 错误**；9 个改动文件 `prettier --check` 干净、`git diff --check` 干净；逐包 test **`EXIT=0`、0 失败**：ui **133 文件 / 1119** · core **70 / 1464 / 6 跳过** · cli **39 / 568** · server **222 / 3228 / 6 跳过** · web **374 / 4145 / 2 跳过**（+2 文件 / +11 条即本笔）；`network-panel.spec.mjs` **6 passed**（含新用例）；**反证**：两个源码文件退回 `HEAD`、重建 web 后同一条真浏览器探针 → 换到下侧栏与换回右侧栏两次都是搜索词空、本次回复/全部选中、详情关上；本笔之下两次都留在详情与「响应」页，关标签再打开则从头开始（对照）；两态 console / pageerror 全 0 | `9ec773c2c` |
+| 2026-11-28 | 7.230 | **设备桥接上宿主：`@adelie/device` 的帧 + 服务端的注册表 / 六张表 / 每台设备的权限与审计**（**2026-11-28 第三百六十二轮**接手落地；两笔提交 `1229424ea` 与 `4b0c06fce`）：桥经数据根下的 socket 上报（Windows 是带安装 id 的命名管道），宿主认出并记下设备，权限按每台设备分开（读开写关、写要逐次同意），设备是实例级、跨 Project 要授权，审计只记动作不记正文；migration 18 additive、swapSafe | 七包 `typecheck` `EXIT=0`（`ifaces.json` 215 接口 / 647 类型）；device **6 文件 / 34** · server **226 文件 / 3260 + 6 跳过** 全绿；`oxlint` 0 警告 0 错误、`prettier --check` 干净；起真服务确认 `device bridge: listening on …/run/device-bridge.sock` 且 `/devices` 路由在册 | `1229424ea` `4b0c06fce` |
+| 2026-11-28 | 7.231 | **网络面板的事件流页读得到服务端写出了什么**（**2026-11-28 第三百六十二轮**落地）：连接用 `requestId` 起名，服务端把写出的每一帧记在有界环上（50 条连接 × 500 帧、写明挤掉几条、被挤掉的不复活），新增 `GET /api/sessions/:id/stream-writes`，面板在「事件流」页读回来并每 3 秒重读，记录不全时不与浏览器计数比较 | server **226 / 3260 + 6 跳过** · web **375 文件 / 4149 + 2 跳过** · cli **39 / 568** · ui **133 / 1119** 全绿；`network-panel.spec.mjs` **7 passed**（含新用例）；真浏览器两态：本笔 44 帧 + 帧列表，把记录扣掉则显示「没有这条连接的写帧记录」（管理员身份 console / pageerror / 4xx 全 0） | `874d8b70c` |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36364,3 +36385,101 @@ run `45959010563`，`331a58396`，**success**）——没有红可捡；又按�
 - 代码一笔 **`9ec773c2c`**（`packages/web/src/features/network/{network-place.ts,net-focus.ts,network-panel.tsx}`、
   `packages/web/src/features/chat/builtin-dock-panels.tsx`、`packages/web/test/{network-place,net-focus}.test.ts`、
   `packages/web/e2e/network-panel.spec.mjs`、changelog 一对）；台账（条目 7.229、上表那一行、本节）随本文件另起一笔。
+
+## 第三百六十二轮：设备桥接上宿主、网络面板读得到服务端写了什么（2026-11-28，条目 7.230 / 7.231）
+
+**开工时工作区不干净**：`git status --short` 有 41 项 —— 一笔已提交的 `5abf4f7e0`
+（`feat(device)`：`@adelie/device` 的协议、编解码、快照与清单，1429 行）加上工作区里 25 个改动
+文件与 16 个新文件。判据它是什么形态：`git log -1` 的提交时间 23:05:24、最后一笔文件写入
+23:09:25，之后近四个小时 git 再没被写过；`ps` 里没有 vitest / tsc / pnpm；trace
+`session-2026-11-27-23-00-12-2743f147` 的最后两条是「`[interrupted: tool aborted by user]`」与
+`abort / user_abort`（23:12）—— 那是**上一轮被用户中止、活儿已改到验证尾段**的在途改动，不是
+另一条线在跑。按第三百四十七轮定下的口径（问过一轮没答复即接手）接手做完：先量清它是什么，再
+把没走完的验证走完。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户
+拍板、3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板 / 新依赖），第 7 节到 7.229 全勾。
+上一轮因此自己开了一件新活（用户已放开手做）：设备的宿主侧，以及网络面板「未采集」的那一格。
+两件都在这一轮落地，各记一条新的 7 条目。
+
+**做了什么**（三笔代码）：
+
+- **`@adelie/device` 收尾**（`1229424ea`）：`endpoint.ts`（宿主与桥算出同一个地址 —— Windows 是
+  带安装 id 的命名管道，其余是数据根下的 `run/device-bridge.sock`；`platform` 由调用方传入，这个
+  包也在浏览器里跑）、`ids.ts`（设备 id 折进 `[A-Za-z0-9_-]`，它同时是 URL 路径、文件名与 SQL 键；
+  序列号保留，所以同一台手机换传输还是同一条记录）、协议里多一个 `env` 帧（桥报它那台机器上有没有
+  adb、认的是哪份、平台是什么 —— 「为什么这里没有手机」只能由桥来说）。
+- **服务端 devices 子系统**（`4b0c06fce`）：migration 18 建六张表（`devices` / `device_sessions` /
+  `device_events` / `device_bridges` / `device_grants` / `device_adapters`，additive、`swapSafe`，
+  down 会丢掉审计）；`db/repos/devices.ts` 是 SQL，`devices/` 里 `service.ts` 管状态与权限、
+  `bridges.ts` 管 socket 与帧、`snapshot-store.ts` 把快照合并在数据根上、`audit.ts` 记动作（有上限，
+  每 100 次插入剪一次）；路由挂在 `/api/projects/:projectId/devices`，设备是实例级、Project 决定
+  看得见哪些，跨 Project 要授权，权限变更只有管理员能做；`platform.ts` 注册 `DevicesModule`，
+  热交换时把 socket 交给下一代的监听者。**没有开任何端口**：只有本机 socket。
+- **服务端写帧记录与面板**（`874d8b70c`）：`services/stream-writes.ts` 是一个内存环（最近 50 条
+  连接、每条 500 帧、挤掉的条数写在记录里、被挤掉的连接不会被后来的写入复活 —— 只剩尾巴的记录会
+  被读成整条）；`http/sse.ts` 认一个 `requestId` 查询参数（`EventSource` 设不了请求头），每写一帧
+  （心跳也算）前进一次账，连接开合各盖一个时刻；`GET /api/sessions/:id/stream-writes` 只答这个
+  会话自己的读者；页面上 `api/sse.ts` 用面板自己那一行的请求号给连接起名，`stream-write-view.ts`
+  （纯逻辑）把记录化成条数、差额与相对连接开始的行（两个时钟，所以不画绝对时间），面板在「事件流」
+  页画出来并在连接还开着时每 3 秒重读；记录不全或浏览器那一侧还没结算时不做比较。changelog 一对。
+
+**接手时补的**（上一轮中止在验证途中，以下都是没走完的收尾）：
+
+- `devices-api.test.ts` 那条「成员被授权后才看得见」断言 `events[0]` 是 `paired` —— 而
+  `DeviceDetailResponse` 与实现都是 newest first，最新一条其实是 `grant_project`；改成断言最新是
+  授权、轨迹里仍有配对。
+- `devices-service.test.ts` 八处 `[device]` / `[event]` 解构在 `noUncheckedIndexedAccess` 下
+  「possibly undefined」，改成 `.devices[0]!`（本仓测试的既有写法）。
+- `db-migrations.test.ts`：新增 migration 18 后，十个旧版本夹具都是「用今天的 `SCHEMA_SQL` 建库、
+  再把后来加的东西摘掉」，漏了 device 六张表 —— 加 `dropDevices()` 逐一套上；五处 `applied` 列表
+  末尾补 `devices`；四处 `toBe(17)` 改成 `LATEST_VERSION`。`external-auth.test.ts` 的版本断言同理。
+- `storage-cleanup.test.ts` 的快照会逐文件 `readFile`，撞上新出现的 `run/device-bridge.sock`
+  （`ENXIO`）；非普通文件只记身份与大小，不读内容。
+- `web/test/sse.test.ts` 五处断言整条 URL 等于 `?lastEventId=…`；连接现在多带 `requestId`，改成
+  一个助手解析查询串（`lastEventId` 精确、`requestId` 匹配页面格式）。
+- `network-panel.spec.mjs` 新用例里选流那一行的选择器带了 `$` 锚点 —— 行文本后面还有帧数与时长，
+  永远匹配不上；去掉锚点后通过。
+- 八个文件的 `prettier` 格式；`cli` / `desktop` / `web` 三处 `package.json` 里预加的
+  `@adelie/device` 依赖没有任何 import 用它（只有 server 用），回退掉并重建锁文件（`desktop`
+  按纪律本来也不该动）。
+
+### 验证
+
+- 七包 `typecheck` **`EXIT=0`**（device / core / ui / hmr / server / cli / web 七个 `Done`；
+  `gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：device **6 文件 / 34** · core **70 / 1464 / 6 跳过** ·
+  server **226 文件 / 3260 + 6 跳过** · web **375 文件 / 4149 + 2 跳过** · cli **39 / 568** ·
+  ui **133 / 1119**。web 比上一行的 374 / 4145 多一个文件与四条，正是本笔的新单测。
+- `oxlint` 改动文件 **0 警告 0 错误**；改动文件（含 changelog 一对）`prettier --check` 干净；
+  `git diff --check` 干净。
+- **e2e（真服务端 8997 + 仓库自带 mock 模型 8998 + 临时数据根）**：`network-panel.spec.mjs`
+  **7 passed**，其中新的一条点开这条流的记录、「服务端写出」读到 `44 帧`、帧列表第一行是 `#1`。
+- **真浏览器两态**（同一套服务端与 mock，管理员身份）：A 态「服务端写出 44 帧」并有写出的帧列表
+  （`+728ms server_event 91B #44` 等，新的在上）；B 态把 `stream-writes` 的答复换成 `record: null`
+  （即 HEAD 能画出的那一格），显示「服务器上没有这条连接的写帧记录（只保留最近 50 条连接，重启即
+  清空）」—— 不是「未采集」。两态 console **0 error**、pageerror **0 条**、4xx **0 条**
+  （成员身份下有一条读机器列表的 403，那是既有的权限行为，与本笔无关，管理员下消失）。截图
+  `r362/events-tab-{after,before}.png` 逐张看过。
+- 端口只用 8997（真服务端）、8998（mock）、e2e 自己的临时端口，3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落 `/root/adelie-fork-data/r362-IefD`，探针 / 截图都在 scratchpad 的 `r362/` 下。
+
+### 没做 / 留着
+
+- 设备桥本身（真正跑在手机上 / 桌面壳里的那一侧）、面板上的设备页、WSS 远程桥、适配器安装都还没
+  做 —— 这一轮只把协议与宿主接上，面板与远程是后续的事（`device_adapters` 与 `device_bridges` 的
+  配对令牌表先建好，等那一侧来用）。
+- `bridges.ts` 的 socket 是在数据根下 `run/`，因此存储清理会看到它（已让测试跳过非普通文件）；
+  真要把它排除出清理范围，等设备页那一轮一起定。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律
+  没碰；不切版本号、不发 npm、不发安装包、不发发布汇总。上一轮留下的验证树 `/root/r362-verify`
+  按只读处理，没动它。
+
+### 提交
+
+- 代码三笔 **`1229424ea`**（`packages/device`：`endpoint.ts`、`ids.ts`、`protocol.ts` 的 `env` 帧、
+  `index.ts`、两份单测）、**`4b0c06fce`**（`packages/server` 的 devices 子系统、migration 18、
+  四份单测、三处夹具对齐、`pnpm-lock.yaml`）、**`874d8b70c`**（`services/stream-writes.ts`、
+  `http/sse.ts`、`http/routes/sessions.ts`、web 的 sse / 面板 / 纯逻辑 / 两份单测 / e2e / changelog
+  一对）；台账（条目 7.230、7.231、上表两行、本节）随本文件另起一笔。
