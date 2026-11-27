@@ -3186,6 +3186,11 @@ export interface ModelExchangeEntry {
   model: string;
   clientType: string | null;
   baseUrl: string | null;
+  /**
+   * The provider endpoint this call went to (`<baseUrl>` plus the protocol's own path), or null
+   * when no base URL was configured and the SDK used its vendor default.
+   */
+  url: string | null;
   startedAt: number;
   endedAt: number;
   /** `completed` / `aborted` / `retryable` / `fatal`, the same vocabulary `request_end` uses. */

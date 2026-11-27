@@ -25,7 +25,12 @@ export {
 } from "./generative-model.js";
 export { listEndpointModels } from "./list-models.js";
 export type { ListEndpointModelsOptions } from "./list-models.js";
-export { emitModelExchange, hasModelExchangeSink, setModelExchangeSink } from "./model-exchange.js";
+export {
+  emitModelExchange,
+  hasModelExchangeSink,
+  modelRequestUrl,
+  setModelExchangeSink,
+} from "./model-exchange.js";
 export type {
   ModelExchangeRecord,
   ModelExchangeRequest,

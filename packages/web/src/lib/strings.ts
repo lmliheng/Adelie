@@ -519,6 +519,9 @@ export const zh = {
     fieldRequestId: "请求号",
     fieldTurn: "回合",
     fieldMethod: "方法",
+    /** A model row's own fields: what was called, over which protocol, at which provider endpoint. */
+    fieldModel: "模型",
+    fieldProtocol: "协议",
     fieldUrl: "地址",
     fieldStatus: "状态",
     fieldDuration: "耗时",

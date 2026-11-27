@@ -44,6 +44,14 @@ export interface ModelExchangeRecord {
   model: string;
   clientType: string | null;
   baseUrl: string | null;
+  /**
+   * The provider endpoint this call went to, as far as it can be known from the configured base
+   * URL and the protocol: `<baseUrl><the SDK's own path>` (see modelRequestUrl). null when the
+   * caller configured no base URL (the SDK then uses its vendor default, which this module does
+   * not guess). The Network panel's model rows show this instead of the internal
+   * `/api/sessions/<id>/model` placeholder.
+   */
+  url: string | null;
   /** Server clock, ms. */
   startedAt: number;
   endedAt: number;
@@ -56,6 +64,52 @@ export interface ModelExchangeRecord {
 }
 
 export type ModelExchangeSink = (record: ModelExchangeRecord) => void;
+
+/**
+ * The provider endpoint a model call goes to, derived from the configured base URL and the
+ * protocol.
+ *
+ * The call itself is made inside @prismshadow/agenthub, which builds an SDK client from
+ * `baseUrl` + `clientType` (or the model name when no client type is pinned). Those SDKs append
+ * their own fixed path — the OpenAI SDK `chat/completions` or `responses`, the Anthropic SDK
+ * `v1/messages`, the Google SDK `v1beta/models/<model>:streamGenerateContent` — and this repeats
+ * that rule so the Network panel can name the real endpoint instead of the internal session path.
+ *
+ * The rule is deliberately literal: the SDK does not add a version segment to a caller-supplied
+ * base URL, so a base that already ends with `/v1` keeps it and the path is appended as the SDK
+ * appends it. Null when no base URL is configured: the SDK then talks to its vendor default,
+ * which differs per protocol, and guessing it would put a URL on screen that was never used.
+ */
+export function modelRequestUrl(
+  baseUrl: string | null,
+  clientType: string | null,
+  model: string,
+): string | null {
+  if (baseUrl === null || baseUrl.trim() === "") return null;
+  const base = baseUrl.replace(/\/+$/, "");
+  // The client type AgentHub resolved (its own fallback is the model name, lowercased).
+  const type = (clientType ?? model).toLowerCase();
+  if (type.includes("gemini-3") || type.includes("gemini-embedding")) {
+    return `${base}/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
+  }
+  if (
+    type.includes("ant-messages") ||
+    (type.includes("claude") &&
+      (type.includes("4-6") || type.includes("4-7") || type.includes("4-8") || type.includes("-5")))
+  ) {
+    return `${base}/v1/messages`;
+  }
+  if (
+    type.includes("openai-responses") ||
+    type.includes("deepseek-v4") ||
+    type.includes("gpt-5.") ||
+    type.includes("gpt-6") ||
+    type.includes("minimax-m3")
+  ) {
+    return `${base}/responses`;
+  }
+  return `${base}/chat/completions`;
+}
 
 let sink: ModelExchangeSink | null = null;
 let sequence = 0;

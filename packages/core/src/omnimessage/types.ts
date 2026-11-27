@@ -399,6 +399,20 @@ export interface TokenUsagePayload {
 }
 
 /**
+ * Where one model call was addressed: the model, the protocol AgentHub spoke, and the provider
+ * endpoint. Carried on `request_begin` (optional — older Traces and hosts do not have it) so the
+ * Network panel can name the provider URL from the event itself, without waiting for, or keeping,
+ * the call's bodies.
+ */
+export interface ModelRequestEndpoint {
+  model: string;
+  clientType: string | null;
+  baseUrl: string | null;
+  /** `<baseUrl>` plus the protocol's own path; null when no base URL was configured. */
+  url: string | null;
+}
+
+/**
  * Request boundary event: the boundary of one LLM Request, produced **in pairs** by
  * `context_engine` and written to Trace. `request_end`
  * with `status` of `completed` means the turn has been committed by AgentHub — this is the
@@ -408,6 +422,8 @@ export interface TokenUsagePayload {
  */
 export interface RequestBeginPayload {
   type: "request_begin";
+  /** The address this call went to, when the engine knows it. */
+  endpoint?: ModelRequestEndpoint;
 }
 
 /**

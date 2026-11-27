@@ -47,6 +47,7 @@ import {
   emitModelExchange,
   exchangeMessages,
   hasModelExchangeSink,
+  modelRequestUrl,
   splitExchangeConfig,
 } from "./model-exchange.js";
 import type { ModelExchangeRecord } from "./model-exchange.js";
@@ -65,6 +66,7 @@ import {
 import type {
   CompleteModelPayload,
   Fidelity,
+  ModelRequestEndpoint,
   OmniMessage,
   StopReason,
   TokenCounts,
@@ -1355,6 +1357,22 @@ export class GenerativeModel implements LLMInterface {
   }
 
   /**
+   * Where this instance's next request goes. The engine stamps it on `request_begin` so the
+   * Network panel can show the provider URL from the event itself — before (and without) the
+   * server's body record, which a restart clears.
+   */
+  requestEndpoint(): ModelRequestEndpoint {
+    const baseUrl = this.clientOptions.baseUrl ?? null;
+    const clientType = this.clientOptions.clientType ?? null;
+    return {
+      model: this.clientOptions.model,
+      clientType,
+      baseUrl,
+      url: modelRequestUrl(baseUrl, clientType, this.clientOptions.model),
+    };
+  }
+
+  /**
    * Streaming generation (a single attempt, no internal retry). Merges
    * `params.newMessages` into one UniMessage to issue a stateful request, translating streamed
    * UniEvents into OmniMessages.
@@ -1466,6 +1484,11 @@ export class GenerativeModel implements LLMInterface {
         model: this.clientOptions.model,
         clientType: this.clientOptions.clientType ?? null,
         baseUrl: this.clientOptions.baseUrl ?? null,
+        url: modelRequestUrl(
+          this.clientOptions.baseUrl ?? null,
+          this.clientOptions.clientType ?? null,
+          this.clientOptions.model,
+        ),
         startedAt: exchange.startedAt,
         endedAt: Date.now(),
         status: result.status,

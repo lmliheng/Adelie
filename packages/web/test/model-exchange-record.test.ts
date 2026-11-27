@@ -44,6 +44,25 @@ describe("model rows and their content", () => {
     expect(row!.requestBody).toBeNull();
   });
 
+  it("names the provider endpoint the request_begin event carries", () => {
+    noteNetModelEvent(
+      "s1",
+      event("request_begin", {
+        endpoint: {
+          model: "claude-4-8",
+          clientType: "claude-4-8",
+          baseUrl: "https://api.example.com",
+          url: "https://api.example.com/v1/messages",
+        },
+      }),
+    );
+    const [row] = netLogEntries();
+    expect(row!.url).toBe("https://api.example.com/v1/messages");
+    expect(row!.path).toBe("api.example.com/v1/messages");
+    expect(row!.model).toBe("claude-4-8");
+    expect(row!.clientType).toBe("claude-4-8");
+  });
+
   it("fills request and response bodies, bytes and truncation flags", () => {
     noteNetModelEvent("s1", event("request_begin"));
     noteNetModelEvent("s1", event("request_end", { status: "completed" }));
@@ -53,8 +72,15 @@ describe("model rows and their content", () => {
       responseBody: '{"text":"hi"}',
       requestTruncated: false,
       responseTruncated: true,
+      url: "https://api.example.com/v1/messages",
+      model: "claude-4-8",
+      clientType: "claude-4-8",
     });
     expect(row!.requestBody).toBe('{"messages":[{"role":"user"}]}');
+    expect(row!.url).toBe("https://api.example.com/v1/messages");
+    expect(row!.path).toBe("api.example.com/v1/messages");
+    expect(row!.model).toBe("claude-4-8");
+    expect(row!.clientType).toBe("claude-4-8");
     expect(row!.responseBody).toBe('{"text":"hi"}');
     expect(row!.requestTruncated).toBe(false);
     expect(row!.responseTruncated).toBe(true);
@@ -71,8 +97,12 @@ describe("model rows and their content", () => {
       responseBody: "{}",
       requestTruncated: false,
       responseTruncated: false,
+      url: "https://api.example.com/chat/completions",
+      model: "claude-4-8",
+      clientType: null,
     });
     expect(row!.requestBody).toBeNull();
+    expect(row!.url).toBe("https://api.example.com/chat/completions");
     expect(row!.responseBody).toBeNull();
     expect(netLogPrefs().recordBody).toBe(false);
   });

@@ -24,6 +24,8 @@ export interface StoredModelExchange {
   model: string;
   clientType: string | null;
   baseUrl: string | null;
+  /** The provider endpoint, as derived by core (llm/model-exchange.ts's modelRequestUrl). */
+  url: string | null;
   startedAt: number;
   endedAt: number;
   status: string;
@@ -91,6 +93,7 @@ function store(record: ModelExchangeRecord): void {
     model: record.model,
     clientType: record.clientType,
     baseUrl: record.baseUrl,
+    url: record.url,
     startedAt: record.startedAt,
     endedAt: record.endedAt,
     status: record.status,

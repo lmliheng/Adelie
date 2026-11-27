@@ -444,6 +444,8 @@ export const en: Strings = {
     fieldRequestId: "Request",
     fieldTurn: "Turn",
     fieldMethod: "Method",
+    fieldModel: "Model",
+    fieldProtocol: "Protocol",
     fieldUrl: "URL",
     fieldStatus: "Status",
     fieldDuration: "Duration",

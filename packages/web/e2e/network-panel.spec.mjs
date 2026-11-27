@@ -98,6 +98,12 @@ test("a model row shows what Adelie sent the provider and what came back", async
     timeout: 15_000,
   });
 
+  // The row names the provider endpoint the call went to — the configured base URL plus the
+  // protocol's own path — never the internal `/api/sessions/<id>/model` placeholder.
+  await expect(dock.getByText(/127\.0\.0\.1:\d+\/v1\/messages/)).toBeVisible();
+  await dock.getByRole("button", { name: "概述", exact: true }).click();
+  await expect(dock.getByText("claude-4-8", { exact: true })).toBeVisible();
+
   // What came back: the model's own answer, stitched from its stream.
   await dock.getByRole("button", { name: "响应", exact: true }).click();
   await expect(dock.getByText("响应体")).toBeVisible();

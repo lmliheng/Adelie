@@ -70,6 +70,8 @@ function entry(over: Partial<NetRequest> = {}): NetRequest {
     responseBytes: 0,
     frameCount: null,
     serverEndedAt: null,
+    model: null,
+    clientType: null,
     ...over,
   };
 }

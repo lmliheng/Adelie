@@ -33,6 +33,7 @@ function exchange(
     model: "m1",
     clientType: "openai-chat",
     baseUrl: "https://example.invalid/v1",
+    url: "https://example.invalid/v1/chat/completions",
     startedAt,
     endedAt: startedAt + 1200,
     status: overrides.status ?? "completed",
@@ -84,6 +85,7 @@ describe("model exchange records", () => {
     expect(body.exchanges[0]!.responseJson).toContain("hello");
     expect(body.exchanges[0]!.status).toBe("completed");
     expect(body.exchanges[0]!.clientType).toBe("openai-chat");
+    expect(body.exchanges[0]!.url).toBe("https://example.invalid/v1/chat/completions");
   });
 
   it("uses `after` to read only what a page has not seen", async () => {

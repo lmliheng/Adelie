@@ -590,6 +590,9 @@ function NetDetail({
           responseBody: best.responseJson,
           requestTruncated: best.requestTruncated,
           responseTruncated: best.responseTruncated,
+          url: best.url,
+          model: best.model,
+          clientType: best.clientType,
         });
         setModelBodies(null);
       })
@@ -738,6 +741,12 @@ function NetDetail({
                 {entry.turn === 0 ? S.network.turnBefore : String(entry.turn)}
               </KeyValue>
               <KeyValue label={S.network.fieldMethod}>{entry.method}</KeyValue>
+              {entry.kind === "model" && entry.model !== null && (
+                <KeyValue label={S.network.fieldModel}>{entry.model}</KeyValue>
+              )}
+              {entry.kind === "model" && entry.clientType !== null && (
+                <KeyValue label={S.network.fieldProtocol}>{entry.clientType}</KeyValue>
+              )}
               <KeyValue label={S.network.fieldUrl}>{maskUrlQuery(entry.url)}</KeyValue>
               <KeyValue label={S.network.fieldStatus}>{netStatusLabel(entry)}</KeyValue>
               <KeyValue label={S.network.fieldDuration}>

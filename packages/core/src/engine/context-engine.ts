@@ -1359,7 +1359,7 @@ export class ContextEngine {
         // Request boundary events (replayability): start is
         // emitted when the request is issued, stop carries the terminal state at completion —
         // replay mechanically determines from these whether the turn was committed by AgentHub.
-        const startEvt = requestBegin();
+        const startEvt = requestBegin(this.llm.requestEndpoint?.());
         queue.push(startEvt);
         await this.write(startEvt);
         // Iterate manually to capture the generator's **return value** (LLMOutcome); LLM
@@ -1996,7 +1996,7 @@ export class ContextEngine {
     // The compaction request is itself an ordinary Request, emitting paired request events —
     // written to the (old) Trace only, not pushed to the stream, keeping the compaction process
     // invisible to Human.
-    await this.write(requestBegin());
+    await this.write(requestBegin(this.llm.requestEndpoint?.()));
     // The Session's pinned thinking level, read live and carried exactly as a turn carries it
     // (see the `thinkingLevel` field): the level is the soft-limited per-request parameter, so
     // one Session never has two levels in flight at once. Were this request left on the level

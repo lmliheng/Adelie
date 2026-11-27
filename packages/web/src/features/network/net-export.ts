@@ -17,6 +17,8 @@ function exportable(entry: NetRequest): Record<string, unknown> {
     method: entry.method,
     path: entry.path,
     url: maskUrlQuery(entry.url),
+    model: entry.model,
+    clientType: entry.clientType,
     sessionId: entry.sessionId,
     turn: entry.turn,
     requestId: entry.requestId,

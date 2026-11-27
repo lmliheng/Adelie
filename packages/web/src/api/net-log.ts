@@ -22,6 +22,7 @@
  * name. Export masks again before it writes anything out.
  */
 import type { OmniMessage } from "@adelie/core/omnimessage";
+import { S } from "../lib/strings";
 
 /** How many entries the ring keeps; the newest win, the oldest fall out. */
 export const NET_LOG_CAP = 300;
@@ -76,6 +77,12 @@ export interface NetRequest {
    * server keeps is timed in that same clock, while `startedAt` here is this browser's.
    */
   serverEndedAt: number | null;
+  /**
+   * A model row's provider endpoint and model, filled from the server's record when the row's
+   * detail is opened; null until then (and for page requests).
+   */
+  model: string | null;
+  clientType: string | null;
 }
 
 export interface NetRequestStart {
@@ -279,6 +286,8 @@ export function startNetRequest(input: NetRequestStart): NetRequest | null {
     responseBytes: 0,
     frameCount: null,
     serverEndedAt: null,
+    model: null,
+    clientType: null,
   };
   nextId += 1;
   push(entry);
@@ -324,9 +333,19 @@ export function attachModelExchange(
     responseBody: string;
     requestTruncated: boolean;
     responseTruncated: boolean;
+    /** The provider endpoint core derived for this call; null when no base URL was configured. */
+    url: string | null;
+    model: string;
+    clientType: string | null;
   },
 ): void {
   if (entry === null || !entries.includes(entry)) return;
+  entry.model = bodies.model;
+  entry.clientType = bodies.clientType;
+  if (bodies.url !== null) {
+    entry.url = bodies.url;
+    entry.path = displayPathOf(bodies.url);
+  }
   if (!prefs.recordBody) return;
   entry.requestBody = bodies.requestBody;
   entry.requestTruncated = bodies.requestTruncated;
@@ -345,20 +364,35 @@ export function attachModelExchange(
 export function noteNetModelEvent(sessionId: string | null, msg: OmniMessage): void {
   if (paused) return;
   if (msg.type !== "event_msg") return;
-  const type = (msg.payload as { type?: string }).type;
-  if (type === "request_begin") {
+  const payload = msg.payload as {
+    type?: string;
+    status?: string;
+    attempt?: number;
+    error_message?: string;
+    /** Stamped by the engine (core's requestBegin): the address this call went to. */
+    endpoint?: {
+      model?: string;
+      clientType?: string | null;
+      url?: string | null;
+    };
+  };
+  if (payload.type === "request_begin") {
+    const providerUrl = payload.endpoint?.url ?? null;
     const entry = startNetRequest({
       kind: "model",
       method: "◆",
-      path: modelPath(sessionId),
-      url: modelPath(sessionId),
+      path: providerUrl !== null ? displayPathOf(providerUrl) : modelPath(),
+      url: providerUrl ?? modelPath(),
       sessionId,
     });
-    if (entry !== null) openModelCalls.push(entry);
+    if (entry !== null) {
+      entry.model = payload.endpoint?.model ?? null;
+      entry.clientType = payload.endpoint?.clientType ?? null;
+      openModelCalls.push(entry);
+    }
     return;
   }
-  if (type === "request_end") {
-    const payload = msg.payload as { status?: string; attempt?: number; error_message?: string };
+  if (payload.type === "request_end") {
     const entry = openModelCalls.shift();
     if (entry === undefined) return;
     finishNetRequest(entry, {
@@ -371,8 +405,26 @@ export function noteNetModelEvent(sessionId: string | null, msg: OmniMessage): v
   }
 }
 
-function modelPath(sessionId: string | null): string {
-  return sessionId === null ? "模型调用" : `/api/sessions/${sessionId}/model`;
+/**
+ * What a model row says before its provider endpoint is known: the call itself, not the internal
+ * session path it used to borrow. The server's record replaces it with the real URL when the row
+ * is opened (attachModelExchange).
+ */
+function modelPath(): string {
+  return S.network.modelCall;
+}
+
+/**
+ * A provider URL as the list shows it: host + path + query, without the scheme. The detail keeps
+ * the whole URL; this is the column's reading.
+ */
+function displayPathOf(url: string): string {
+  try {
+    const u = new URL(maskUrlQuery(url));
+    return `${u.host}${u.pathname}${u.search}`;
+  } catch {
+    return url;
+  }
 }
 
 function push(entry: NetRequest): void {

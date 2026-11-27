@@ -29,6 +29,7 @@ import type {
   PartialThinkingPayload,
   PartialToolCallOutputPayload,
   PartialToolCallPayload,
+  ModelRequestEndpoint,
   RequestBeginPayload,
   RequestEndPayload,
   Role,
@@ -294,9 +295,9 @@ export function abortEvent(
   return event({ type: "abort", error_code: errorCode });
 }
 
-/** request begin event: marks the start of one LLM Request. */
-export function requestBegin(): OmniMessage<RequestBeginPayload> {
-  return event({ type: "request_begin" });
+/** request begin event: marks the start of one LLM Request, with the address it went to. */
+export function requestBegin(endpoint?: ModelRequestEndpoint): OmniMessage<RequestBeginPayload> {
+  return event({ type: "request_begin", ...(endpoint !== undefined ? { endpoint } : {}) });
 }
 
 /**

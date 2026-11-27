@@ -8,7 +8,13 @@
  *
  * Docs: packages/docs/content/interfaces.{zh,en}.md (site path /docs/interfaces).
  */
-import type { ErrorCode, OmniMessage, StopReason, ToolDefinition } from "../omnimessage/types.js";
+import type {
+  ErrorCode,
+  ModelRequestEndpoint,
+  OmniMessage,
+  StopReason,
+  ToolDefinition,
+} from "../omnimessage/types.js";
 import type { ThinkingLevelName } from "./shared.js";
 // Concrete class, used only as a type annotation (type-only import; no runtime dependency, no circular reference).
 import type { ToolCallIdAllocator } from "../llm/tool-call-ids.js";
@@ -174,4 +180,10 @@ export interface LLMOutcome {
  */
 export interface LLMInterface {
   streamGenerate(parameters: GenerativeModelParameters): AsyncGenerator<OmniMessage, LLMOutcome>;
+  /**
+   * Where a request would go right now: the model, the protocol and the provider endpoint. The
+   * engine stamps it on `request_begin` so the Network panel can name the provider URL from the
+   * event itself. Optional — an implementation that cannot say leaves the event bare.
+   */
+  requestEndpoint?(): ModelRequestEndpoint;
 }
