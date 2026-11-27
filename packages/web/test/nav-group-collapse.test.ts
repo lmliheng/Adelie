@@ -84,14 +84,14 @@ describe("pinned vs. collapsible", () => {
   it("defaults: New chat, Agents, Models and Plugins pinned; the rest collapsible", () => {
     expect(splitNavEntries(navEntryKeysFor(true), {})).toEqual({
       pinned: ["newChat", "agents", "models", "plugins"],
-      collapsible: ["machines", "usage", "benchmark"],
+      collapsible: ["machines", "devices", "usage", "benchmark"],
     });
   });
 
   it("a member's areas are cut from their own entries: an admin-only page is in neither", () => {
     expect(splitNavEntries(navEntryKeysFor(false), {})).toEqual({
       pinned: ["newChat", "agents", "models", "plugins"],
-      collapsible: ["usage", "benchmark"],
+      collapsible: ["devices", "usage", "benchmark"],
     });
     // A choice stored for it (an admin signed in on this browser before) offers nothing.
     const { pinned, collapsible } = splitNavEntries(navEntryKeysFor(false), { machines: true });
@@ -105,7 +105,7 @@ describe("pinned vs. collapsible", () => {
     // Models lands ahead of Machines (its manifest place), not at the end it was moved to.
     expect(splitNavEntries(navEntryKeysFor(true), unpinned)).toEqual({
       pinned: ["newChat", "agents", "plugins"],
-      collapsible: ["models", "machines", "usage", "benchmark"],
+      collapsible: ["models", "machines", "devices", "usage", "benchmark"],
     });
   });
 
@@ -115,7 +115,7 @@ describe("pinned vs. collapsible", () => {
     expect(first).toEqual(second);
     expect(splitNavEntries(navEntryKeysFor(true), first)).toEqual({
       pinned: ["newChat", "agents", "models", "plugins", "usage", "benchmark"],
-      collapsible: ["machines"],
+      collapsible: ["machines", "devices"],
     });
   });
 
@@ -149,7 +149,7 @@ describe("pinned vs. collapsible", () => {
   it("everything pinned leaves the collapsible area empty, so folding hides nothing", () => {
     let overrides: NavPinOverrides = {};
     for (const key of navEntryKeysFor(true)) overrides = withNavPinned(overrides, key, true);
-    expect(overrides).toEqual({ machines: true, usage: true, benchmark: true });
+    expect(overrides).toEqual({ machines: true, devices: true, usage: true, benchmark: true });
     const { collapsible } = splitNavEntries(navEntryKeysFor(true), overrides);
     expect(collapsible).toEqual([]);
     expect(visibleNavKeys(true, true, overrides)).toEqual(navEntryKeysFor(true));
@@ -179,6 +179,7 @@ describe("visibleNavKeys", () => {
       "plugins",
       "models",
       "machines",
+      "devices",
       "usage",
       "benchmark",
     ]);
@@ -256,7 +257,7 @@ describe("persisted pin choices (one global localStorage key)", () => {
     expect(restored).toEqual(moved);
     expect(splitNavEntries(navEntryKeysFor(true), restored)).toEqual({
       pinned: ["newChat", "agents", "plugins", "usage"],
-      collapsible: ["models", "machines", "benchmark"],
+      collapsible: ["models", "machines", "devices", "benchmark"],
     });
   });
 

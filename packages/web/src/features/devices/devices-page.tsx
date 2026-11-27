@@ -27,7 +27,7 @@ import {
   PageFrame,
   PageHeader,
 } from "@adelie/ui";
-import { renderSVG } from "uqr";
+import { encode } from "uqr";
 import * as api from "../../api/endpoints";
 import { useProject } from "../../state/project";
 import { useLocale } from "../../state/locale";
@@ -94,11 +94,47 @@ function when(iso: string | null | undefined, locale: "zh" | "en"): string {
   return Number.isNaN(ms) ? "—" : formatMessageTime(ms, locale);
 }
 
+/**
+ * The wireless-pairing code, drawn as modules rather than an injected SVG string — the same way
+ * the messaging scan-connect pages do it (uqr gives the matrix; the rects are ours, so no
+ * markup is injected as HTML).
+ */
+function PairingQr({ value, label }: { value: string; label: string }): React.ReactElement {
+  const { size, data } = encode(value);
+  const quiet = 2;
+  const span = size + quiet * 2;
+  const modules: React.ReactElement[] = [];
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (data[y]?.[x] !== true) continue;
+      // 1.02 wide so neighbours meet: a hairline gap at fractional device pixel ratios
+      // is what makes a rendered code hard to scan.
+      modules.push(
+        <rect key={`${x}-${y}`} x={x + quiet} y={y + quiet} width={1.02} height={1.02} />,
+      );
+    }
+  }
+  return (
+    <svg
+      viewBox={`0 0 ${span} ${span}`}
+      width={220}
+      height={220}
+      role="img"
+      aria-label={label}
+      className="shrink-0 rounded-md"
+      shapeRendering="crispEdges"
+    >
+      <rect width={span} height={span} fill="#ffffff" />
+      <g fill="#000000">{modules}</g>
+    </svg>
+  );
+}
+
 /** Three columns of label/value under a section title; a missing reading draws nothing. */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="min-w-0">
-      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-subtle">{title}</h4>
+      <h4 className="mb-1 text-xs font-medium text-fg-muted">{title}</h4>
       <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">{children}</dl>
     </section>
   );
@@ -371,7 +407,7 @@ export function DevicesPage() {
                     </span>
                   </span>
                   <ChevronDown
-                    className={`mt-0.5 size-4 shrink-0 text-fg-subtle transition-transform ${open ? "rotate-180" : ""}`}
+                    className={`mt-0.5 size-4 shrink-0 text-fg-subtle ${open ? "rotate-180" : ""}`}
                   />
                 </button>
 
@@ -476,13 +512,9 @@ export function DevicesPage() {
           )}
           {pairing !== null && (
             <>
-              <div
-                className="mx-auto w-fit rounded-md bg-white p-2 [&_svg]:block"
-                // uqr renders the pairing payload (`WIFI:T:ADB;S:…;P:…;;`) as an SVG string.
-                dangerouslySetInnerHTML={{
-                  __html: renderSVG(pairing.qr, { pixelSize: 6, border: 2 }),
-                }}
-              />
+              <div className="mx-auto w-fit rounded-md bg-white p-2">
+                <PairingQr value={pairing.qr} label={S.devices.pair.title} />
+              </div>
               <p className="text-center font-mono text-xs tabular-nums text-fg">
                 {S.devices.pair.code(pairing.code)}
               </p>
@@ -672,10 +704,8 @@ function DeviceBody({
 
       {events.length > 0 && (
         <section>
-          <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
-            {t.audit.title}
-          </h4>
-          <ul className="max-h-40 space-y-0.5 overflow-y-auto text-xs">
+          <h4 className="mb-1 text-xs font-medium text-fg-muted">{t.audit.title}</h4>
+          <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">
             {events.slice(0, 20).map((event, index) => (
               <li key={`${event.at}-${index}`} className="flex items-baseline gap-2">
                 <span className="shrink-0 font-mono text-fg-subtle">{when(event.at, locale)}</span>
@@ -687,9 +717,9 @@ function DeviceBody({
         </section>
       )}
 
-      {isAdmin && <p className="text-[11px] text-fg-subtle">{t.permissions.hint}</p>}
+      {isAdmin && <p className="text-xs text-fg-subtle">{t.permissions.hint}</p>}
       {!isAdmin && Object.entries(perm).some(([, allowed]) => allowed) && (
-        <p className="text-[11px] text-fg-subtle">
+        <p className="text-xs text-fg-subtle">
           {Object.entries(perm)
             .filter(([, allowed]) => allowed)
             .map(
@@ -725,7 +755,7 @@ function PermissionsModal({
                 <span className="block text-sm text-fg">
                   {(t.capabilities as Record<string, string>)[capability] ?? capability}
                 </span>
-                <span className="block font-mono text-[11px] text-fg-subtle">{capability}</span>
+                <span className="block font-mono text-xs text-fg-subtle">{capability}</span>
               </span>
               <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 text-xs">
                 <input
