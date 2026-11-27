@@ -3389,7 +3389,7 @@ router
         qr: "WIFI:T:ADB;S:adb-0f1e2d3c;P:123456;;",
         serviceName: "adb-0f1e2d3c",
         code: "123456",
-        expiresAt: iso(now + 5 * 60_000),
+        expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
       },
     },
   }))
@@ -3416,8 +3416,13 @@ router
             data: {
               path: str(args.path, "/sdcard"),
               entries: [
-                { name: "DCIM", dir: true, sizeBytes: 4096, modifiedAt: iso(ago(0, 20)) },
-                { name: "photo.jpg", dir: false, sizeBytes: 2_048_000, modifiedAt: iso(ago(1)) },
+                { name: "DCIM", dir: true, sizeBytes: 4096, modifiedAt: minutesAgo(20) },
+                {
+                  name: "photo.jpg",
+                  dir: false,
+                  sizeBytes: 2_048_000,
+                  modifiedAt: minutesAgo(24 * 60),
+                },
               ],
             },
           };
@@ -3473,7 +3478,7 @@ router
             data: { notifications: device.snapshot?.notifications?.data ?? [], count: 1 },
           };
         case "snapshot.refresh":
-          return { ok: true, data: { at: iso(now) } };
+          return { ok: true, data: { at: new Date().toISOString() } };
         default:
           return { ok: false, error: { code: "unsupported", message: `The demo has no ${op}.` } };
       }
