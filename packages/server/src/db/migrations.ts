@@ -826,7 +826,6 @@ export const MIGRATIONS: readonly Migration[] = [
       `);
     },
   },
-
 ];
 
 /** The highest version this build knows how to reach. */

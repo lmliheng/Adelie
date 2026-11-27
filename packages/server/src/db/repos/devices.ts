@@ -19,15 +19,13 @@ import {
   defaultPermissions,
   normalizePermissions,
   type Capability,
+  type DeviceEvent,
+  type DeviceEventKind,
+  type DeviceKind,
+  type DevicePrefs,
+  type DeviceState,
+  type DeviceTransport,
   type Permissions,
-} from "@adelie/device";
-import type {
-  DeviceEvent,
-  DeviceEventKind,
-  DeviceKind,
-  DevicePrefs,
-  DeviceState,
-  DeviceTransport,
 } from "@adelie/device";
 
 export interface DeviceRow {

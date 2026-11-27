@@ -1234,3 +1234,45 @@ describe("rollbackTo", () => {
     }
   });
 });
+
+/**
+ * Migration 18 is the device feature's six tables. Additive and swapSafe, so a hot push may
+ * land it in place; its undo drops exactly what it added and says what that loses.
+ */
+describe("migration 18 (devices)", () => {
+  const TABLES = [
+    "devices",
+    "device_sessions",
+    "device_events",
+    "device_bridges",
+    "device_grants",
+    "device_adapters",
+  ];
+
+  function tables(db: DatabaseSync): string[] {
+    return (
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{
+        name: string;
+      }>
+    ).map((r) => r.name);
+  }
+
+  it("adds the six tables on the way up and takes them away on the way down", () => {
+    // A database from before the feature: today's declaration minus these six tables, stamped 17.
+    const db = new sqlite.DatabaseSync(":memory:");
+    db.exec(SCHEMA_SQL);
+    dropDevices(db);
+    db.exec("PRAGMA user_version = 17");
+    migrate(db);
+    for (const table of TABLES) expect(tables(db)).toContain(table);
+
+    rollbackTo(db, 17);
+    for (const table of TABLES) expect(tables(db)).not.toContain(table);
+    db.close();
+  });
+
+  it("is safe on the swap path (a pushed platform may apply it in place)", () => {
+    const migration = MIGRATIONS.find((m) => m.version === 18);
+    expect(migration?.swapSafe).toBe(true);
+  });
+});
