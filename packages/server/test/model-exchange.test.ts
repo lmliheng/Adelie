@@ -9,6 +9,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { emitModelExchange } from "@adelie/core";
+import type { StopReason } from "@adelie/core";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";
 import { createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
@@ -24,7 +25,7 @@ function exchange(
   overrides: {
     request?: Record<string, unknown>;
     response?: Record<string, unknown>;
-    status?: string;
+    status?: StopReason;
   } = {},
 ): void {
   emitModelExchange({
