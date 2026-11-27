@@ -168,6 +168,12 @@ describe("storage cleanup", () => {
           out.push(`link ${rel} -> ${await fs.readlink(full)}`);
           continue;
         }
+        // Not every entry is a file: the device bridge listens on a socket under `run/`, which
+        // cannot be read. Its identity and size still take part in the comparison.
+        if (!st.isFile()) {
+          out.push(`other ${rel} ${st.size}`);
+          continue;
+        }
         out.push(`file ${rel} ${st.size} ${await fs.readFile(full, "utf8")}`);
       }
     };

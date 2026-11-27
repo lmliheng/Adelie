@@ -732,6 +732,101 @@ export const MIGRATIONS: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 18,
+    name: "devices",
+    // Additive: six new tables and their indexes, no existing column touched. A predecessor
+    // build never reads them and serves no /devices route, so a rollback survives it — the
+    // rows it wrote stay on disk until a build that knows the tables is back.
+    swapSafe: true,
+    up(db) {
+      // Frozen copy of the DDL as of the device feature; do not re-derive from schema.ts.
+      // IF NOT EXISTS because the declarative track may already have created them (ADOPTION).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS devices (
+          id           TEXT PRIMARY KEY,
+          bridge_id    TEXT NOT NULL,
+          kind         TEXT NOT NULL,
+          name         TEXT NOT NULL,
+          serial       TEXT,
+          transport    TEXT NOT NULL,
+          platform     TEXT,
+          state        TEXT NOT NULL,
+          capabilities TEXT NOT NULL,
+          permissions  TEXT NOT NULL,
+          paired_at    TEXT,
+          last_seen_at TEXT,
+          prefs        TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_devices_bridge ON devices(bridge_id);
+        CREATE TABLE IF NOT EXISTS device_sessions (
+          id         TEXT PRIMARY KEY,
+          device_id  TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+          transport  TEXT NOT NULL,
+          started_at TEXT NOT NULL,
+          ended_at   TEXT,
+          reason     TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_device_sessions_device ON device_sessions(device_id, started_at DESC);
+        CREATE TABLE IF NOT EXISTS device_events (
+          id        INTEGER PRIMARY KEY AUTOINCREMENT,
+          device_id TEXT NOT NULL,
+          at        TEXT NOT NULL,
+          kind      TEXT NOT NULL CHECK (kind IN ('state','notify','action','alert')),
+          actor     TEXT,
+          action    TEXT,
+          detail    TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_device_events_device ON device_events(device_id, id DESC);
+        CREATE TABLE IF NOT EXISTS device_bridges (
+          id           TEXT PRIMARY KEY,
+          name         TEXT NOT NULL,
+          kind         TEXT NOT NULL,
+          token_hash   TEXT NOT NULL,
+          version      TEXT,
+          capabilities TEXT,
+          last_seen_at TEXT,
+          revoked_at   TEXT
+        );
+        CREATE TABLE IF NOT EXISTS device_grants (
+          device_id  TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+          project_id TEXT NOT NULL,
+          granted_by TEXT NOT NULL,
+          granted_at TEXT NOT NULL,
+          PRIMARY KEY (device_id, project_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_device_grants_project ON device_grants(project_id);
+        CREATE TABLE IF NOT EXISTS device_adapters (
+          id           TEXT NOT NULL,
+          version      TEXT NOT NULL,
+          dir          TEXT NOT NULL,
+          manifest     TEXT NOT NULL,
+          enabled      INTEGER NOT NULL DEFAULT 0,
+          installed_at TEXT NOT NULL,
+          installed_by TEXT,
+          PRIMARY KEY (id, version)
+        );
+      `);
+    },
+    // LOSES every known device, its permission grants, the audit trail, the bridge records and
+    // the adapter install records. A device reappears the next time its bridge reports it (with
+    // fresh defaults: reads on, writes off); nothing can restore the audit trail.
+    down(db) {
+      db.exec(`
+        DROP TABLE IF EXISTS device_adapters;
+        DROP INDEX IF EXISTS idx_device_grants_project;
+        DROP TABLE IF EXISTS device_grants;
+        DROP TABLE IF EXISTS device_bridges;
+        DROP INDEX IF EXISTS idx_device_events_device;
+        DROP TABLE IF EXISTS device_events;
+        DROP INDEX IF EXISTS idx_device_sessions_device;
+        DROP TABLE IF EXISTS device_sessions;
+        DROP INDEX IF EXISTS idx_devices_bridge;
+        DROP TABLE IF EXISTS devices;
+      `);
+    },
+  },
+
 ];
 
 /** The highest version this build knows how to reach. */

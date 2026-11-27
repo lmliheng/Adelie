@@ -86,8 +86,8 @@ describe("external auth: program tokens and introspection", () => {
   };
 
   it("the migration lands the three tables and the version stamp", () => {
-    expect(LATEST_VERSION).toBe(17);
-    expect(schemaVersion(t.deps.db)).toBe(17);
+    expect(LATEST_VERSION).toBe(18);
+    expect(schemaVersion(t.deps.db)).toBe(LATEST_VERSION);
     const names = (
       t.deps.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as {
         name: string;

@@ -73,6 +73,7 @@
     "build": "pnpm gen:ifaces && node ../../scripts/run-with-env.mjs NODE_OPTIONS=--max-old-space-size=4096 -- tsup"
   },
   "dependencies": {
+    "@adelie/device": "workspace:*",
     "@hono/node-server": "^2.0.5",
     "@larksuiteoapi/node-sdk": "^1.73.0",
     "@adelie/amsp": "workspace:*",

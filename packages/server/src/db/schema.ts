@@ -386,4 +386,67 @@ CREATE TABLE IF NOT EXISTS oauth_audit (        -- one row per introspection / r
   detail    TEXT                              -- why it was refused, or what was done
 );
 CREATE INDEX IF NOT EXISTS idx_oauth_audit_at ON oauth_audit(at DESC);
+CREATE TABLE IF NOT EXISTS devices (      -- a phone (or any peripheral) a bridge found: instance-level, not a Project's; device_grants says which Projects may use it
+  id           TEXT PRIMARY KEY,            -- stable id the bridge mints ('android-<serial>'), so a reconnect rejoins its record
+  bridge_id    TEXT NOT NULL,
+  kind         TEXT NOT NULL,               -- android | ios | other
+  name         TEXT NOT NULL,
+  serial       TEXT,
+  transport    TEXT NOT NULL,               -- usb | wifi | companion | browser
+  platform     TEXT,
+  state        TEXT NOT NULL,               -- online | offline | unauthorized | pairing | connecting
+  capabilities TEXT NOT NULL,               -- JSON array of capability ids the bridge declared
+  permissions  TEXT NOT NULL,               -- JSON object: per-device grants; writes default off
+  paired_at    TEXT,
+  last_seen_at TEXT,
+  prefs        TEXT                         -- JSON: display name, note, hidden
+);
+CREATE INDEX IF NOT EXISTS idx_devices_bridge ON devices(bridge_id);
+CREATE TABLE IF NOT EXISTS device_sessions (  -- one row per connection episode, so "when was it online" is answerable without replaying events
+  id         TEXT PRIMARY KEY,
+  device_id  TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  transport  TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at   TEXT,
+  reason     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_device_sessions_device ON device_sessions(device_id, started_at DESC);
+CREATE TABLE IF NOT EXISTS device_events (    -- the audit trail: state changes, actions, alerts. Append-only; detail never carries bodies or file bytes
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_id TEXT NOT NULL,
+  at        TEXT NOT NULL,
+  kind      TEXT NOT NULL CHECK (kind IN ('state','notify','action','alert')),
+  actor     TEXT,                             -- user id, 'agent:<sessionId>', or system
+  action    TEXT,                             -- screenshot | pull | push | install | shell | grant | revoke …
+  detail    TEXT                              -- JSON, small and non-sensitive
+);
+CREATE INDEX IF NOT EXISTS idx_device_events_device ON device_events(device_id, id DESC);
+CREATE TABLE IF NOT EXISTS device_bridges (   -- one row per bridge that ever connected; token_hash is empty for a local socket, which the filesystem already authorizes
+  id           TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
+  kind         TEXT NOT NULL,                 -- desktop | cli | companion | adapter
+  token_hash   TEXT NOT NULL,
+  version      TEXT,
+  capabilities TEXT,
+  last_seen_at TEXT,
+  revoked_at   TEXT
+);
+CREATE TABLE IF NOT EXISTS device_grants (    -- which Projects may see and use a device. No row = admins only, so one phone is not three copies
+  device_id  TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  project_id TEXT NOT NULL,
+  granted_by TEXT NOT NULL,
+  granted_at TEXT NOT NULL,
+  PRIMARY KEY (device_id, project_id)
+);
+CREATE INDEX IF NOT EXISTS idx_device_grants_project ON device_grants(project_id);
+CREATE TABLE IF NOT EXISTS device_adapters (  -- installed adapter packages; two versions per id are kept so a rollback needs no download
+  id           TEXT NOT NULL,
+  version      TEXT NOT NULL,
+  dir          TEXT NOT NULL,
+  manifest     TEXT NOT NULL,
+  enabled      INTEGER NOT NULL DEFAULT 0,
+  installed_at TEXT NOT NULL,
+  installed_by TEXT,
+  PRIMARY KEY (id, version)
+);
 `;

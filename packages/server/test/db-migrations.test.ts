@@ -52,6 +52,20 @@ function dropAgentApi(db: DatabaseSync): void {
   db.exec("DROP TABLE IF EXISTS agent_api");
 }
 
+/** Migration 18's six tables: a database stamped before it had none of them. */
+function dropDevices(db: DatabaseSync): void {
+  for (const table of [
+    "device_adapters",
+    "device_grants",
+    "device_bridges",
+    "device_events",
+    "device_sessions",
+    "devices",
+  ]) {
+    db.exec(`DROP TABLE IF EXISTS ${table}`);
+  }
+}
+
 /** Every company-mode table the migrations add: a database from before them had none. */
 function dropCompanyModeTables(db: DatabaseSync): void {
   for (const table of [
@@ -77,6 +91,7 @@ function dropCompanyModeTables(db: DatabaseSync): void {
 function open024(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
@@ -123,6 +138,7 @@ const PRE_CHANNEL_CHAT_DDL = `
 function open6(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
@@ -142,6 +158,7 @@ function open6(): DatabaseSync {
 function open7(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS org_desk_notices");
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
@@ -158,6 +175,7 @@ function open7(): DatabaseSync {
 function open8(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
@@ -173,6 +191,7 @@ function open8(): DatabaseSync {
 function open9(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
@@ -190,6 +209,7 @@ function open9(): DatabaseSync {
 function open12(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   dropAgentApi(db);
@@ -203,6 +223,7 @@ function open12(): DatabaseSync {
 function open029(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
@@ -228,6 +249,7 @@ function open029(): DatabaseSync {
 function openPreProfile(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
@@ -250,6 +272,7 @@ function openPreProfile(): DatabaseSync {
 function openPreUsageCost(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   dropUsageCostColumns(db);
   dropAgentApi(db);
@@ -694,8 +717,9 @@ describe("migration 8 → current: model-promotions", () => {
         "agent-api",
         "admin-notifications",
         "external-auth-tokens",
+        "devices",
       ]);
-      expect(schemaVersion(db)).toBe(17);
+      expect(schemaVersion(db)).toBe(LATEST_VERSION);
       expect(promotionsTableExists()).toEqual({ "1": 1 });
       expect(authTokensTableExists()).toEqual({ "1": 1 });
 
@@ -721,8 +745,9 @@ describe("migration 8 → current: model-promotions", () => {
         "agent-api",
         "admin-notifications",
         "external-auth-tokens",
+        "devices",
       ]);
-      expect(schemaVersion(db)).toBe(17);
+      expect(schemaVersion(db)).toBe(LATEST_VERSION);
     } finally {
       db.close();
     }
@@ -748,8 +773,9 @@ describe("migration 9 → current: model-provider-auth-tokens", () => {
         "agent-api",
         "admin-notifications",
         "external-auth-tokens",
+        "devices",
       ]);
-      expect(schemaVersion(db)).toBe(17);
+      expect(schemaVersion(db)).toBe(LATEST_VERSION);
       expect(tableExists()).toEqual({ "1": 1 });
       db.exec(
         "INSERT INTO users (user_id, password_hash, is_admin, created_at)" +
@@ -798,6 +824,7 @@ describe("migration 12 → current: company-mode-desk-mentions", () => {
         "agent-api",
         "admin-notifications",
         "external-auth-tokens",
+        "devices",
       ]);
       expect(schemaVersion(db)).toBe(LATEST_VERSION);
       expect(shape(db)).toBe(shape(fresh));
@@ -902,6 +929,7 @@ describe("pre-cost → current: usage-record-cost", () => {
 function open13(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropDevices(db);
   dropExternalAuth(db);
   dropUsageCostColumns(db);
   dropAgentApi(db);
@@ -919,8 +947,9 @@ describe("migration 13 → current: agent-api", () => {
         "agent-api",
         "admin-notifications",
         "external-auth-tokens",
+        "devices",
       ]);
-      expect(schemaVersion(db)).toBe(17);
+      expect(schemaVersion(db)).toBe(LATEST_VERSION);
       const enable = () =>
         db
           .prepare(

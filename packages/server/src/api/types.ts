@@ -24,6 +24,14 @@ import type {
   ThinkingLevelName,
   ToolDefinitionConfig,
 } from "@adelie/core/interfaces";
+// Device types come from the zero-dependency protocol package, which the frontend also reads.
+import type {
+  Capability,
+  DeviceCommandOp,
+  DeviceEvent,
+  DeviceInfo,
+  DeviceSnapshot,
+} from "@adelie/device";
 // Build/harness identity is not an interface contract — it ships from the barrel (core's version-info.ts).
 import type {
   HarnessInfo,
@@ -3194,6 +3202,42 @@ export interface ModelExchangeEntry {
 
 export interface ModelExchangesResponse {
   exchanges: ModelExchangeEntry[];
+}
+
+/**
+ * One frame the server wrote on an SSE connection: its SSE identity (both lines optional in the
+ * protocol), its size and its moment. Recorded in services/stream-writes.ts.
+ */
+export interface StreamWriteFrameEntry {
+  seq: number;
+  at: number;
+  event: string | null;
+  id: string | null;
+  bytes: number;
+}
+
+/**
+ * What one connection id has written so far. `connections` counts the subscriptions that
+ * carried it (a browser reconnect reuses the URL, so the same id can cover several), and
+ * `dropped` the frames that fell out of the server's ring — a record with `dropped > 0` holds
+ * the tail of the connection, not all of it.
+ */
+export interface StreamWritesRecord {
+  requestId: string;
+  openedAt: number;
+  endedAt: number | null;
+  connections: number;
+  frames: StreamWriteFrameEntry[];
+  dropped: number;
+}
+
+/**
+ * GET /api/sessions/:sessionId/stream-writes?requestId= — the server's own record of that
+ * connection. `record: null` is "nothing captured under this id" (the page did not name its
+ * stream, or the record fell out of the ring), never an error.
+ */
+export interface StreamWritesResponse {
+  record: StreamWritesRecord | null;
 }
 
 export interface ApprovalDecisionRequest {
@@ -7508,4 +7552,97 @@ export interface RegisterOAuthClientResponse {
   clientId: string;
   clientSecret: string;
   entry: OAuthClientSummary;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Devices (the phone-as-peripheral feature)                                 */
+/* ------------------------------------------------------------------------- */
+
+/** A device as the panel and the CLI read it: the stored row, plus what is live right now. */
+export interface DeviceView extends DeviceInfo {
+  /** Whether the bridge that owns it is connected to this server at the moment. */
+  bridgeOnline: boolean;
+  /** The layered snapshot; `null` until the bridge has measured it once. */
+  snapshot: DeviceSnapshot | null;
+  /** Milliseconds since the newest section was read; `null` when there is none. */
+  snapshotAgeMs: number | null;
+  /** Every Project this device is granted to (admins see devices with no grant too). */
+  grants: string[];
+}
+
+/** One bridge row, live or not: the panel's "why is there no phone" evidence. */
+export interface BridgeView {
+  id: string;
+  name: string;
+  kind: "desktop" | "cli" | "companion" | "adapter";
+  version: string | null;
+  /** Connected right now. */
+  online: boolean;
+  lastSeenAt: string | null;
+  /** Devices this bridge currently reports (0 while it is away). */
+  devices: number;
+  revokedAt: string | null;
+}
+
+/**
+ * What a bridge found on its machine. `found: false` is the state the panel must explain —
+ * no adb, no phone — so `message` carries the sentence a person needs, not an empty list.
+ */
+export interface AdbStatus {
+  found: boolean;
+  path: string | null;
+  version: string | null;
+  /** `path | android-studio | scrcpy | bundled | setting | env | missing` */
+  source: string;
+  message?: string;
+}
+
+export interface DevicesResponse {
+  devices: DeviceView[];
+  bridges: BridgeView[];
+  /** Null until a bridge has connected and reported one. */
+  adb: AdbStatus | null;
+}
+
+export interface DeviceDetailResponse {
+  device: DeviceView;
+  /** The audit trail, newest first, capped. */
+  events: DeviceEvent[];
+}
+
+/** A command the caller asks a device to run. `approve` is the per-command consent writes need. */
+export interface DeviceCommandRequest {
+  op: DeviceCommandOp;
+  args?: Record<string, unknown>;
+  /** Required for every write capability (install, shell, input, file write). */
+  approve?: boolean;
+}
+
+export interface DeviceCommandResponse {
+  ok: boolean;
+  data?: unknown;
+  error?: { code: string; message: string };
+}
+
+/** Per-device, per-capability grant. Writes default off; reads of identity and apps default on. */
+export interface DevicePermissionRequest {
+  capability: Capability;
+  allowed: boolean;
+}
+
+export interface DevicePermissionResponse {
+  device: DeviceView;
+}
+
+/** Which Project may see and use a device (admins always can). */
+export interface DeviceGrantRequest {
+  projectId: string;
+}
+
+export interface DeviceGrantsResponse {
+  grants: Array<{ projectId: string; grantedBy: string; grantedAt: string }>;
+}
+
+export interface DeviceEventListResponse {
+  events: DeviceEvent[];
 }
