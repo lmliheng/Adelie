@@ -4,7 +4,9 @@ Browser end-to-end tests: chat (thinking + tool approval + tool execution + seco
 reply), the iconified stats line (cost conversion / copy reply), Session fork (footer action
 right of copy, confirm-gated, and no stray request after deleting the fork), Traces (per-Task
 timeline + legend + hover-linked highlighting), Workspace file preview (sandboxed HTML
-rendering, path hidden by default). The LLM is driven by `mock-llm.mjs` (a mock Anthropic
+rendering, path hidden by default), Devices (a fake bridge on the data root's
+`run/device-bridge.sock`: the card, the readings behind it, the pairing QR, and what a member
+is not offered). The LLM is driven by `mock-llm.mjs` (a mock Anthropic
 Messages SSE endpoint) — no network access.
 
 ```sh
