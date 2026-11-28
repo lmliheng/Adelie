@@ -4126,6 +4126,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       `test-windows (rest)`、`test-windows (server-1)` 三个作业，原因三条都与产品逻辑无关 —— 两份桥接用例把
       `net` 的端点指到一个普通路径（Windows 上那是 EACCES，named pipe 才有名字），假 adb 是 `#!/bin/sh`
       脚本（Windows 上没有解释器会去读它），`phone.js` 一直是单引号。见「第三百六十四轮」一节。
+- [x] **7.233 「Agent 的第一个工作流」那条用例等的是成功的那次加载，重试也不再撞 `agent_exists`**
+      （**2026-11-28 第三百六十五轮**落地，提交见「已完成的轮次」；`packages/server` 只有
+      `test/workflows.test.ts` 一个文件 —— 等待条件从「status.json 出现」改成「status.json 说这次加载
+      成功」、轮询上限 100 → 200 次，这个用例自己新建的 Agent 改成按尝试取名（`builder1` / `builder2`…），
+      注释写明为什么 —— **不碰产品行为、不碰接口、无新依赖**）：`test-macos (server)` 自 2026-10-16 起
+      间歇红在这一条，两种形状是同一件事 —— 监听到 `workflows/` 一出现就加载，而 Agent 还在逐个写文件，
+      于是第一次加载按「package.json 旁边没有 index.ts」失败并把结论写进 status.json（这正是设计里的
+      路径：下一次保存重载），用例却把「文件出现」当成答案、读到失败就收工；重试那一次又在 POST 上撞
+      `409 agent_exists`（Agent 比尝试活得久，用例自己不清理）。见「第三百六十五轮」一节。
 
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
@@ -7390,6 +7399,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-28 | 7.230 | **设备桥接上宿主：`@adelie/device` 的帧 + 服务端的注册表 / 六张表 / 每台设备的权限与审计**（**2026-11-28 第三百六十二轮**接手落地；两笔提交 `1229424ea` 与 `4b0c06fce`）：桥经数据根下的 socket 上报（Windows 是带安装 id 的命名管道），宿主认出并记下设备，权限按每台设备分开（读开写关、写要逐次同意），设备是实例级、跨 Project 要授权，审计只记动作不记正文；migration 18 additive、swapSafe | 七包 `typecheck` `EXIT=0`（`ifaces.json` 215 接口 / 647 类型）；device **6 文件 / 34** · server **226 文件 / 3260 + 6 跳过** 全绿；`oxlint` 0 警告 0 错误、`prettier --check` 干净；起真服务确认 `device bridge: listening on …/run/device-bridge.sock` 且 `/devices` 路由在册 | `1229424ea` `4b0c06fce` |
 | 2026-11-28 | 7.231 | **网络面板的事件流页读得到服务端写出了什么**（**2026-11-28 第三百六十二轮**落地）：连接用 `requestId` 起名，服务端把写出的每一帧记在有界环上（50 条连接 × 500 帧、写明挤掉几条、被挤掉的不复活），新增 `GET /api/sessions/:id/stream-writes`，面板在「事件流」页读回来并每 3 秒重读，记录不全时不与浏览器计数比较 | server **226 / 3260 + 6 跳过** · web **375 文件 / 4149 + 2 跳过** · cli **39 / 568** · ui **133 / 1119** 全绿；`network-panel.spec.mjs` **7 passed**（含新用例）；真浏览器两态：本笔 44 帧 + 帧列表，把记录扣掉则显示「没有这条连接的写帧记录」（管理员身份 console / pageerror / 4xx 全 0） | `874d8b70c` |
 | 2026-11-28 | 7.232 | **`main` 的 CI 三处红：手机桥的两套用例在 Windows 上跑不起来、`phone.js` 没格式化**（**2026-11-28 第三百六十四轮**落地；4 个文件、全是夹具与格式：`packages/device-adb/test/bridge.test.ts` 的端点改走 `bridgeEndpoint(dir, path.basename(dir), process.platform)` 并先建 socket 目录、`packages/server/test/devices-bridge.test.ts` 不再覆盖端点（`endpoint = hub.address()`）且「没留下 socket」只在 POSIX 断言、`packages/device-adb/test/adb-script.test.ts` 的「真可执行文件」一组在 win32 上 `describe.skipIf`、`android/app/src/main/assets/phone.js` 过 prettier —— **不碰产品行为、不碰接口、无新依赖**）：CI `46079022099`（`22a9d924e`）红的 `style (prettier)` / `test-windows (rest)` / `test-windows (server-1)` 三个作业，根因是以普通路径当端点（Windows 上是 EACCES，`\\.\pipe\…` 才有名字）、假 adb 是 `#!/bin/sh`（Node 不许无 shell 跑 `.cmd`，而 runner 又是无 shell 起的）、单引号资产 | 七包 `typecheck` **`EXIT=0`**（device-adb / core / ui / hmr / server / cli / web 七个 `Done`）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 全仓 `pnpm format:check` **干净** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：device-adb **6 文件 / 63**（改前 1 文件因 `listen EACCES` 整份报错、57 通过 6 跳过，即本地复现出来的同一条）· core **71 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过**（其中 `devices-bridge` 4 条）· web **375 / 4150 + 2 跳过** · 本机是 Linux，Windows 那一侧真正算数的是推上去之后重跑的 `test-windows (rest)` / `test-windows (server-1)` —— run `46080987913`（`2c2f634df`）**22 个作业全绿**，上一 run 红的 `style` / `test-windows (rest)` / `test-windows (server-1)` 三个都在里面 · 端口一个没起、3003 / 3004 / 4000 / 7364 / 7369 一个没碰 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
+| 2026-11-28 | 7.233 | **「Agent 的第一个工作流」那条用例等的是成功的那次加载，重试也不再撞 `agent_exists`**（**2026-11-28 第三百六十五轮**落地；`packages/server/test/workflows.test.ts` 一个文件 —— 等待条件从「status.json 出现」改成「status.json 说这次加载成功」、轮询上限 100 → 200 次，这个用例自己新建的 Agent 按尝试取名（`builder1` / `builder2`…），注释写明为什么；**不碰产品行为、不碰接口、无新依赖**）：`test-macos (server)` 自 2026-10-16 起间歇红在这一条，`46056204561` 读到的是 `{ok:false, error:"no index.ts next to package.json"}`、`46091152754`（`16c94e768`）读到的是 `{}`，两形状同源 —— 监听到 `workflows/` 一出现就加载而 Agent 还在逐个写文件，第一次加载按「package.json 旁边没有 index.ts」失败并写进 status.json（这是设计里的路径：下一次保存重载），用例却把「文件出现」当成答案；重试那一次又撞 `409 agent_exists`。改前本机用「写完 package.json 停 500 ms」的探针复现出同一对失败（`--retry 1`：第一次 `ok:false`、第二次 `409`），改后同一探针两次都是绿的 | 改前/改后探针各两跑（见「第三百六十五轮」一节）；`pnpm typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）；逐包 test **`EXIT=0`、0 失败**：core **71 文件 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过** · web **375 / 4150 + 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；本机是 Linux，macOS 那一侧算数的是推上去之后的 `test-macos (server)` | `62693e5be` |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36574,4 +36584,79 @@ Windows 那条（Linux 的普通路径是合法的），但换上 `bridgeEndpoin
 ### 提交
 
 - 本笔（4 个文件：两份桥接用例、假 adb 那一组、`phone.js`）；台账（条目 7.232、上表那一行、本节）随本文件
+  另起一笔。
+
+## 第三百六十五轮：「Agent 的第一个工作流」那条用例等的是成功的那次加载，重试也不再撞 `agent_exists`（2026-11-28，条目 7.233）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `16c94e768`（`chore(release): 发 0.8.8`，
+0.8.8 那一笔发布不是本线的轮次，没进台账）；`git fetch origin` 一次即通、`git merge --ff-only origin/main`
+无内容（已是最新；没有切分支、没碰 `legacy/main`、没推 upstream）。`ps` 里没有 vitest / tsc / pnpm，
+`.git/index` 停在 09:03（发布那一笔），没有另一条线在跑。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、
+3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板 / 新依赖），第 7 节到 7.232 全勾。于是照第三百六十四轮的
+判据先看 `main` 的 CI：最新 run **`46091152754`**（`16c94e768`，01:03 UTC）只红一个作业 ——
+`test-macos (server)`（`ci` 是汇总作业，跟着红）。再往前一笔 `46081695160`（`203647d68`）红的也正是它，
+而中间的 `46080987913`（`2c2f634df`）22 个作业全绿 —— 同一个用例、同一台 runner、只差一笔纯文档提交，
+就是那条记了很多轮的间歇红（参考记忆里 2026-10-16 就记过一次），这轮把它收掉。
+
+**根因**（两份日志拼起来才完整）：`test/workflows.test.ts > a loaded workflow > notices an Agent's FIRST
+workflow, made with nothing but its file tools` 先 POST 一个 `builder` Agent、GET 一次它的 workflows（这一步
+让服务端去监听「`workflows/` 这个文件夹出现」），然后把 `first/{package.json,index.ts,ui/index.html}` 逐个
+写下去，最后轮询 `.build/status.json`。
+
+- `46056204561` 的那次拿到的是 `{ok:false, error:"no index.ts next to package.json"}` —— 监听到文件夹出现就
+  加载，而 Agent 还在逐个写文件，于是第一次加载按「package.json 旁边没有 index.ts」失败。这是**产品设计里
+  的路径**（每次保存都重载，失败也写进 status.json 让 Agent 看见），后来的那次重载会成功；问题在用例：
+  它的循环条件是 `status.ok === undefined`，读到那个失败的 status 就收工、立刻断言。
+- `46091152754` 的那次拿到的是 `{}`（文件在 10 s 内根本没出现，macOS runner 慢），于是照样断言。
+- 两次的第二次尝试都撞 `{"error":{"code":"agent_exists","message":"Agent id is already taken: builder."}}`：
+  `vitest.config.ts` 在 macOS 上 `retry: 1`，而重试只重跑用例、`beforeAll` 里的 app 不重建，`builder` 这个
+  Agent 还活着 —— 正是那份配置注释里警告过的「重试到一个注定失败的分支」。
+
+**做了什么**（一个文件，一个字节的产品代码都没动）：
+
+- 等待条件改成**等成功的那次加载**：`for (let i = 0; i < 200 && status.ok !== true; i++)`，注释写明为什么 ——
+  文件出现不是答案（那是第一次加载会落在一个半写的文件夹上），成功的那次才是。
+- 这个用例自己新建的 Agent 改成按尝试取名：`let builders = 0; const builder = \`builder${++builders}\``，
+  路径与 URL 都跟着它走。每次尝试一个全新的 Agent，重试因此不再依赖上一次尝试留下的东西。
+  注释同样写明为什么（win32 重试两次、macOS 一次，Agent 比尝试活得久）。
+
+**改前实测（本机复现）**：给上面那四行写入加一条「写完 `package.json` 停 500 ms」的探针（模拟慢的写入方，
+也就是 macOS runner 上的实际情形），用改前的用例跑 —— 拿到与 CI 一模一样的
+`{error:"no index.ts next to package.json", ok:false, tabs:[]}`；再 `--retry 1` 跑一次，第二次报
+`409 agent_exists` 那一句。两份日志的失败形状与 CI 逐字一致。
+
+**改后实测**：同一探针下改后**一次通过**（`2685 ms`，它等过了那次失败的加载）；再单独验重试那半边 ——
+临时让第一次尝试在等待前抛错、`--retry 1` 跑，**第二次尝试用 `builder2` 建 Agent 并跑通**（`1 passed`，
+`retry x1`），证明两次尝试互不依赖。两个探针随后都删掉，最终 diff 只有上面那三处。
+
+### 验证
+
+- `pnpm typecheck` **`EXIT=0`**（core / server / cli / web / desktop / ui-gallery 六个 `Done`；
+  `gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **71 文件 / 1469 通过 / 6 跳过** · ui **133 / 1119** ·
+  cli **40 / 575** · server **226 / 3264 通过 / 6 跳过** · web **375 / 4150 通过 / 2 跳过**
+  （与第三百六十四轮的基线逐个相同）。`test/workflows.test.ts` 单跑 **14 passed**。
+- `oxlint` 改动文件 **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
+- 本笔不改界面，**没有起服务、没有开浏览器**，端口一个没起，3003 / 3004 / 4000 / 7364 / 7369 一个没碰，
+  数据根没写（探针与日志都只落在本会话 scratchpad 的 `r365/`）。
+- macOS 那一侧真正算数的是推上去之后的 `test-macos (server)`：本机是 Linux，`retry` 只在 win32 / darwin
+  生效，本机跑不出那条抖动（只能靠探针把「慢写入 + 重试」造出来）。
+
+### 没做 / 留着
+
+- **没有改产品**：第一次加载就按半写的文件夹失败、把结论写进 status.json，是设计里的行为（「A save reloads
+  the workflow」），下一次保存会重载；这轮只把用例改成按这个设计断言。要是以后想让「第一个工作流」这条路径
+  也走 300 ms 的 `WATCH_SETTLE_MS` 去抖（与 `schedule()` 那条路径一致），那是产品行为改动，得单独一轮并说清
+  它与「Agent 写完就该看到结论」的取舍。
+- 同文件里 `refuses a workflow written in JavaScript` 那条也自己建 Agent（`scripter`），有同样的重试风险；
+  它不慢、从没红过，这轮没动它（只做这一条）。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 本笔 **`62693e5be`**（`packages/server/test/workflows.test.ts`）；台账（条目 7.233、上表那一行、本节）随本文件
   另起一笔。
