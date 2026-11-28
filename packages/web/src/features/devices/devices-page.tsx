@@ -38,6 +38,7 @@ import { formatMessageTime } from "../../lib/format";
 import { toneDot } from "../../lib/tone";
 import type { Tone } from "../../lib/tone";
 import { useDocumentTitle } from "../../lib/use-document-title";
+import { auditActionLabel, auditActorLabel } from "./audit-label";
 
 /** The bridge samples readings every 15 s; the page follows that cadence rather than guessing. */
 const POLL_MS = 15_000;
@@ -390,7 +391,9 @@ export function DevicesPage() {
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="truncate text-sm font-medium text-fg">{device.name}</span>
                       <Badge tone="neutral">{S.devices.transport[device.transport]}</Badge>
-                      {!device.bridgeOnline && <Badge tone="neutral">bridge</Badge>}
+                      {!device.bridgeOnline && (
+                        <Badge tone="neutral">{S.devices.bridgeBadge}</Badge>
+                      )}
                       {power?.level !== undefined && (
                         <span className="font-mono text-xs tabular-nums text-fg-muted">
                           {power.level}%{power.charging === true ? " ⚡" : ""}
@@ -709,8 +712,12 @@ function DeviceBody({
             {events.slice(0, 20).map((event, index) => (
               <li key={`${event.at}-${index}`} className="flex items-baseline gap-2">
                 <span className="shrink-0 font-mono text-fg-subtle">{when(event.at, locale)}</span>
-                <span className="shrink-0 text-fg-muted">{event.action ?? event.kind}</span>
-                <span className="min-w-0 truncate text-fg-subtle">{event.actor ?? "system"}</span>
+                <span className="shrink-0 text-fg-muted">
+                  {auditActionLabel(event.action, event.kind)}
+                </span>
+                <span className="min-w-0 truncate text-fg-subtle">
+                  {auditActorLabel(event.actor)}
+                </span>
               </li>
             ))}
           </ul>

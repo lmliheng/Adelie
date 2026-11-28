@@ -6794,7 +6794,46 @@ export const zh = {
     confirmForget: (name: string) => `移除 ${name}？记录会删掉，审计保留。`,
     forgetFailed: "移除失败：",
     loadFailed: "读取设备失败：",
-    audit: { title: "最近操作", empty: "还没有操作记录。" },
+    /**
+     * The folded card's badge for a phone whose bridge is not connected: the card is still here,
+     * only what reported it went away. Kept short — it sits in the name line next to the transport.
+     */
+    bridgeBadge: "桥接离线",
+    audit: {
+      title: "最近操作",
+      empty: "还没有操作记录。",
+      /**
+       * Audit rows carry the writer's own identifiers (`paired`, `shell`, `offline`); the list
+       * names them in the reader's language. A key this table lacks falls back to the raw
+       * identifier — see features/devices/audit-label.ts.
+       */
+      actions: {
+        paired: "接入",
+        grant: "授予权限",
+        revoke: "收回权限",
+        grant_project: "授权给 Project",
+        revoke_project: "取消 Project 授权",
+        forget: "移除",
+        pair: "发起配对",
+        screenshot: "截图",
+        ls: "列目录",
+        pull: "取文件",
+        push: "写文件",
+        apps: "列应用",
+        install: "安装应用",
+        uninstall: "卸载应用",
+        shell: "执行命令",
+        input: "点击与输入",
+        notify: "读通知",
+        refresh: "刷新读数",
+        bridge_lost: "设备桥断开",
+      },
+      /** The two refusals the server records as `<action>:denied` / `<action>:needs-approval`. */
+      denied: (label: string) => `${label}（被拒绝）`,
+      needsApproval: (label: string) => `${label}（等待批准）`,
+      /** Who a row is attributed to when the writer named no one, or named the system itself. */
+      bySystem: "系统",
+    },
     noDevicesForMember: "这个 Project 还没有被授权的手机，请管理员在设备页授权。",
   },
 };

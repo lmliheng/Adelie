@@ -172,9 +172,13 @@ test("an admin reads the card and unfolds it into the readings the bridge sent",
   await expect(phone.getByText("1080×2400")).toBeVisible();
   await expect(phone.getByText("lab-5g")).toBeVisible();
   await expect(phone.getByText("-52 dBm")).toBeVisible();
-  // The trail starts at the moment the bridge first reported it.
+  // The trail starts at the moment the bridge first reported it — named in the page's words,
+  // not the writer's identifier (`paired`), and attributed to the system rather than to it.
+  // («系统» is also the overview's label for the platform, so the row is matched as a whole.)
   await expect(phone.getByText("最近操作")).toBeVisible();
-  await expect(phone.getByText("paired")).toBeVisible();
+  const firstRow = phone.locator("li").filter({ hasText: "接入" });
+  await expect(firstRow).toContainText("接入");
+  await expect(firstRow).toContainText("系统");
 });
 
 test("adding a phone asks the bridge for a pairing code and draws the QR it answers with", async ({
