@@ -36641,8 +36641,9 @@ workflow, made with nothing but its file tools` 先 POST 一个 `builder` Agent�
 - `oxlint` 改动文件 **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
 - 本笔不改界面，**没有起服务、没有开浏览器**，端口一个没起，3003 / 3004 / 4000 / 7364 / 7369 一个没碰，
   数据根没写（探针与日志都只落在本会话 scratchpad 的 `r365/`）。
-- macOS 那一侧真正算数的是推上去之后的 `test-macos (server)`：本机是 Linux，`retry` 只在 win32 / darwin
-  生效，本机跑不出那条抖动（只能靠探针把「慢写入 + 重试」造出来）。
+- **macOS 那一侧（推上去之后算数）**：run **`46101828467`**（`c2171d1d5`）**21 个作业全绿**，其中
+  `test-macos (server)` 是上一 run 红的那一个。本机是 Linux，`retry` 只在 win32 / darwin 生效，本机跑不出
+  那条抖动，只能靠探针把「慢写入 + 重试」造出来。
 
 ### 没做 / 留着
 
@@ -36658,5 +36659,8 @@ workflow, made with nothing but its file tools` 先 POST 一个 `builder` Agent�
 
 ### 提交
 
-- 本笔 **`62693e5be`**（`packages/server/test/workflows.test.ts`）；台账（条目 7.233、上表那一行、本节）随本文件
-  另起一笔。
+- 本笔 **`62693e5be`**（`packages/server/test/workflows.test.ts`）；台账（条目 7.233、上表那一行、本节）
+  **`c2171d1d5`**；CI 结果与「邮件不通」两处补记随本文件再一笔。
+- **汇报没发出去**：CSU 邮箱 IMAP/SMTP 又一次 TCP 超时（`mail.py check` 90 秒 `EXIT=124`）、飞书兜底报
+  「web.db 里没有可用的飞书绑定」—— 两通道都不通（与 2026-11-26 那次同形），汇报留在本会话答复与
+  会话 scratchpad 的 `r365/report.txt`。
