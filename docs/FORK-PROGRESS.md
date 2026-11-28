@@ -36815,6 +36815,10 @@ underscores only`），改成 `deviceviewer`。两次都是用例自己的问题
   逐个相同，web 多出来的 1 个文件 / 6 条正是本笔的单测。
 - `oxlint` 改动文件 **0 警告 0 错误**；`prettier --check` 干净（`devices-page.tsx` 先被 `--write` 排过一行）；
   `git diff --check` 干净。
+- **CI**：run **`46138867948`**（`0f40b566a`）**22 个作业全绿**（`test` 四个 / `test-windows` 六个 /
+  `test-macos` 四个 / `runtime` 三个 / `style` / `typecheck` / `npm packaging` / `plugin versions` /
+  `installer-e2e` / `installer-windows`）；代码那一笔 `ed1cf7117` 自己的 run（`46138824534`）被
+  `cancel-in-progress` 取消，属预期。
 - 端口只用 **9120**（真服务端）+ 探针自己的浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
   `/root/adelie-fork-data/r367-5t1K0y` 一个临时根，探针 / 截图 / 服务端日志都在会话 scratchpad 的 `r367/` 下。
 
