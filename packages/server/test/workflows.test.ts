@@ -365,25 +365,37 @@ describe("a loaded workflow", { timeout: 30_000 }, () => {
     expect((await owner.get(`${BASE}/nope/api/`)).status).toBe(404);
   });
 
+  /**
+   * The FIRST-workflow case makes an Agent of its own; the attempt running it may be a retry
+   * (win32 retries twice, macOS once), and an Agent outlives the attempt that made it, so the
+   * id is the attempt's own — a shared one turns the retry into a `409 agent_exists`.
+   */
+  let builders = 0;
+
   it("notices an Agent's FIRST workflow, made with nothing but its file tools", async () => {
     // Another Agent of the Project, with no workflows/ folder when its list is first read.
-    const made = await owner.post(`/api/projects/${PROJECT}/agents`, { agentId: "builder" });
+    const builder = `builder${++builders}`;
+    const made = await owner.post(`/api/projects/${PROJECT}/agents`, { agentId: builder });
     expect(made.status, await made.text()).toBe(201);
-    const base = `/api/projects/${PROJECT}/agents/builder/workflows`;
+    const base = `/api/projects/${PROJECT}/agents/${builder}/workflows`;
     expect(((await (await owner.get(base)).json()) as { workflows: unknown[] }).workflows).toEqual(
       [],
     );
 
-    const first = path.join(agentDir(t.root, PROJECT, "builder"), "workflows", "first");
+    const first = path.join(agentDir(t.root, PROJECT, builder), "workflows", "first");
     await fs.mkdir(path.join(first, "ui"), { recursive: true });
     await fs.writeFile(path.join(first, "package.json"), packageJson());
     await fs.writeFile(path.join(first, "index.ts"), indexSource("first"));
     await fs.writeFile(path.join(first, "ui", "index.html"), "<h1>first</h1>");
 
-    // Nobody lists again: the server has to see the folder appear and load it on its own.
+    // Nobody lists again: the server has to see the folder appear and load it on its own. The
+    // watcher fires as soon as `workflows/` does, so a load can land while these writes are
+    // still arriving and report what is missing — status.json then holds that until the next
+    // save reloads it, which is the designed path (every save reloads). The file appearing is
+    // therefore not the answer; the load that succeeds is.
     const statusFile = path.join(first, ".build", "status.json");
     let status: { ok?: boolean } = {};
-    for (let i = 0; i < 100 && status.ok === undefined; i++) {
+    for (let i = 0; i < 200 && status.ok !== true; i++) {
       await new Promise((r) => setTimeout(r, 100));
       status = await fs.readFile(statusFile, "utf8").then(
         (text) => JSON.parse(text) as { ok: boolean },
