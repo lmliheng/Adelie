@@ -4135,6 +4135,11 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       于是第一次加载按「package.json 旁边没有 index.ts」失败并把结论写进 status.json（这正是设计里的
       路径：下一次保存重载），用例却把「文件出现」当成答案、读到失败就收工；重试那一次又在 POST 上撞
       `409 agent_exists`（Agent 比尝试活得久，用例自己不清理）。见「第三百六十五轮」一节。
+- [x] **7.234 设备页有了真浏览器用例：假桥连数据根的 socket，一张卡、它的读数、配对码与成员视角**
+      （**2026-11-28 第三百六十六轮**落地，提交见「已完成的轮次」；`packages/web/e2e/devices.spec.mjs`
+      一个新文件、`packages/web/e2e/README.md` 一段 —— 用例自己当设备桥，按协议发 `hello` / `devices` /
+      `snapshot` 并回 `command`，**产品代码一个字节没动、无新依赖**）：`/devices`（侧栏「设备」，0.8.8 随包
+      发的）此前**零界面验证** —— `packages/web/test` 里没有 devices，`e2e/` 里也没有一条。见「第三百六十六轮」一节。
 
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
@@ -7400,6 +7405,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-28 | 7.231 | **网络面板的事件流页读得到服务端写出了什么**（**2026-11-28 第三百六十二轮**落地）：连接用 `requestId` 起名，服务端把写出的每一帧记在有界环上（50 条连接 × 500 帧、写明挤掉几条、被挤掉的不复活），新增 `GET /api/sessions/:id/stream-writes`，面板在「事件流」页读回来并每 3 秒重读，记录不全时不与浏览器计数比较 | server **226 / 3260 + 6 跳过** · web **375 文件 / 4149 + 2 跳过** · cli **39 / 568** · ui **133 / 1119** 全绿；`network-panel.spec.mjs` **7 passed**（含新用例）；真浏览器两态：本笔 44 帧 + 帧列表，把记录扣掉则显示「没有这条连接的写帧记录」（管理员身份 console / pageerror / 4xx 全 0） | `874d8b70c` |
 | 2026-11-28 | 7.232 | **`main` 的 CI 三处红：手机桥的两套用例在 Windows 上跑不起来、`phone.js` 没格式化**（**2026-11-28 第三百六十四轮**落地；4 个文件、全是夹具与格式：`packages/device-adb/test/bridge.test.ts` 的端点改走 `bridgeEndpoint(dir, path.basename(dir), process.platform)` 并先建 socket 目录、`packages/server/test/devices-bridge.test.ts` 不再覆盖端点（`endpoint = hub.address()`）且「没留下 socket」只在 POSIX 断言、`packages/device-adb/test/adb-script.test.ts` 的「真可执行文件」一组在 win32 上 `describe.skipIf`、`android/app/src/main/assets/phone.js` 过 prettier —— **不碰产品行为、不碰接口、无新依赖**）：CI `46079022099`（`22a9d924e`）红的 `style (prettier)` / `test-windows (rest)` / `test-windows (server-1)` 三个作业，根因是以普通路径当端点（Windows 上是 EACCES，`\\.\pipe\…` 才有名字）、假 adb 是 `#!/bin/sh`（Node 不许无 shell 跑 `.cmd`，而 runner 又是无 shell 起的）、单引号资产 | 七包 `typecheck` **`EXIT=0`**（device-adb / core / ui / hmr / server / cli / web 七个 `Done`）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 全仓 `pnpm format:check` **干净** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：device-adb **6 文件 / 63**（改前 1 文件因 `listen EACCES` 整份报错、57 通过 6 跳过，即本地复现出来的同一条）· core **71 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过**（其中 `devices-bridge` 4 条）· web **375 / 4150 + 2 跳过** · 本机是 Linux，Windows 那一侧真正算数的是推上去之后重跑的 `test-windows (rest)` / `test-windows (server-1)` —— run `46080987913`（`2c2f634df`）**22 个作业全绿**，上一 run 红的 `style` / `test-windows (rest)` / `test-windows (server-1)` 三个都在里面 · 端口一个没起、3003 / 3004 / 4000 / 7364 / 7369 一个没碰 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-28 | 7.233 | **「Agent 的第一个工作流」那条用例等的是成功的那次加载，重试也不再撞 `agent_exists`**（**2026-11-28 第三百六十五轮**落地；`packages/server/test/workflows.test.ts` 一个文件 —— 等待条件从「status.json 出现」改成「status.json 说这次加载成功」、轮询上限 100 → 200 次，这个用例自己新建的 Agent 按尝试取名（`builder1` / `builder2`…），注释写明为什么；**不碰产品行为、不碰接口、无新依赖**）：`test-macos (server)` 自 2026-10-16 起间歇红在这一条，`46056204561` 读到的是 `{ok:false, error:"no index.ts next to package.json"}`、`46091152754`（`16c94e768`）读到的是 `{}`，两形状同源 —— 监听到 `workflows/` 一出现就加载而 Agent 还在逐个写文件，第一次加载按「package.json 旁边没有 index.ts」失败并写进 status.json（这是设计里的路径：下一次保存重载），用例却把「文件出现」当成答案；重试那一次又撞 `409 agent_exists`。改前本机用「写完 package.json 停 500 ms」的探针复现出同一对失败（`--retry 1`：第一次 `ok:false`、第二次 `409`），改后同一探针两次都是绿的 | 改前/改后探针各两跑（见「第三百六十五轮」一节）；`pnpm typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）；逐包 test **`EXIT=0`、0 失败**：core **71 文件 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过** · web **375 / 4150 + 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；本机是 Linux，macOS 那一侧算数的是推上去之后的 `test-macos (server)` | `62693e5be` |
+| 2026-11-28 | 7.234 | **设备页有了真浏览器用例：假桥连数据根的 socket，一张卡、它的读数、配对码与成员视角**（**2026-11-28 第三百六十六轮**落地；`packages/web/e2e/devices.spec.mjs` 一个新文件 + e2e 目录 README 一段 —— 用例自己当设备桥（`run/device-bridge.sock` 上的 JSON lines：`hello` / `devices` / `snapshot`，并回服务端发来的 `command`），三条用例覆盖管理员读卡片与展开、`pair.wifi.start` 换来的二维码、成员视角没有管理员动作且截图与通知禁用；**不碰产品代码、不碰接口、无新依赖**）：`/devices` 是 0.8.8 随包发的页面，此前 `packages/web/test` 与 `e2e/` 都没有一处覆盖，它的数据又只来自设备桥 —— 一条真浏览器用例把「socket → 注册表 → 视图」整条链钉住 | 改后 e2e **3 passed**（`9108` 空数据根两次、`9107` 一次；`devices.spec.mjs` 4.6 s）；真浏览器截图四张（列表 / 展开 / 权限弹窗 / 配对二维码）逐张看过，管理员视角 console **0 error**、`pageerror` **0 条**；成员视角有一条既有的 `GET …/machines` 403（权限行为，第三百六十二轮记过，与本笔无关）；`pnpm typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）；逐包 test **`EXIT=0`、0 失败**：core **71 / 1469 + 6 跳过** · ui **133 / 1119** · server **226 / 3264 + 6 跳过** · cli **40 / 575** · web **375 / 4150 + 2 跳过**（与第三百六十五轮基线逐个相同）；`oxlint` 改动文件 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；端口只用 9107 / 9108，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `644b65748` |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36664,3 +36670,78 @@ workflow, made with nothing but its file tools` 先 POST 一个 `builder` Agent�
 - **汇报没发出去**：CSU 邮箱 IMAP/SMTP 又一次 TCP 超时（`mail.py check` 90 秒 `EXIT=124`）、飞书兜底报
   「web.db 里没有可用的飞书绑定」—— 两通道都不通（与 2026-11-26 那次同形），汇报留在本会话答复与
   会话 scratchpad 的 `r365/report.txt`。
+
+## 第三百六十六轮：设备页有了真浏览器用例 —— 假桥连数据根的 socket，一张卡、它的读数、配对码与成员视角（2026-11-28，条目 7.234）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `7258d79f6`（第三百六十五轮的台账补记）；
+`git fetch origin` 一次即通、`git merge --ff-only origin/main` 无内容（已是最新；没有切分支、没碰
+`legacy/main`、也没推 upstream）。`ps` 里没有 vitest / tsc / pnpm，没有另一条线在跑。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、
+3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板 / 新依赖），第 7 节到 7.233 全勾。CI 也没有红点：
+最新 run `46103057765`（`7258d79f6`）与 `46101828467`（`c2171d1d5`）都是 success。于是照第三六二 / 三六五轮的
+口径自己开一件：**设备页是 0.8.8 随包发的页面（`/devices`，侧栏「设备」，774 行），但 `packages/web/test`
+里没有一处 devices、`e2e/` 里也没有一条** —— 第三百六十二轮记过它「面板上的设备页还没做」，后来那几条线的
+代码补上了页面，验证却一直空着。设备页的数据只来自设备桥，所以用例自己当那台桥，就能把整条链钉住。
+
+**做了什么**（两个文件，一个字节的产品代码都没动）：
+
+- `packages/web/e2e/devices.spec.mjs`（新文件）：
+  - `FakeBridge` —— 连 `<数据根>/run/device-bridge.sock`（`@adelie/device` 的 `bridgeEndpoint` 在非 Windows
+    上就是这条路径；Windows 的命名管道这条 spec 不覆盖，`run.sh` 本来也只跑 POSIX），按协议发 `hello`、
+    一台手机与它的静态 / 动态读数，收 `ping` 回 `pong`，收 `command` 按 op 回 `result`。帧解析按行缓冲，
+    与 `@adelie/device` 的 codec 同一形状（一个文件里手写，免得 e2e 为它多一条跨包依赖）。
+  - 三条用例：管理员读卡片（折叠时的「87%」「在线」「USB」）并展开（序列号 / 构建 / 温度 / 分辨率 /
+    WiFi / 信号 / 从 `paired` 开始的审计）；「添加设备」先断言桥**真收到了** `pair.wifi.start`，再回一个
+    配对结果，页面画出二维码（`role=img` 且 `aria-label` 为「无线接入一台手机」）与「配对码 123456」；
+    成员视角看到同一张卡，但没有「添加设备」「权限…」「移除设备」，且「截图」「通知」因为这台设备没被
+    授予这两个能力而禁用 —— 「读默认开、写默认关」由禁用态直接证明，不需要读内部状态。
+  - 成员那条先在管理员的 context 里把成员加进 Project 并 `POST …/devices/:id/grants` 授权 —— 设备是实例级
+    的，Project 决定看得见哪些（第三百六十二轮的服务端口径），这也是那条用例顺手钉住的第二件事。
+- `packages/web/e2e/README.md`：第一段列举代表性主题的地方补上 Devices 一项（假桥在数据根的 socket 上、
+  卡片 / 读数 / 配对二维码 / 成员看不到什么）。
+
+**改前实测**：同一条 spec 在 `9107`（带着探针设备的数据根）上第一次跑，第一条红在
+`strict mode violation` —— `getByText("在线")` 同时命中状态行的「在线」与「最后在线」那一格；改成
+`{ exact: true }` 后通过。第二次红在用户名：`device-viewer` 被 `POST /api/admin/users` 按 400 拒掉
+（`Username must be 2–32 characters: starts with a lowercase letter; lowercase letters, digits and
+underscores only`），改成 `deviceviewer`。两次都是用例自己的问题，产品侧每次都正常渲染。
+
+**改后实测**：`9108` 上**空数据根**（`mktemp -d`，与 `run.sh` 同形，只有服务端自己建出来的 `run/`）跑
+**3 passed / 4.6 s**；同一数据根上再跑一次也 **3 passed**（用例幂等：用户 409 复用、授权重复也无妨、
+桥重报同一台设备）。
+
+### 验证
+
+- **真浏览器两态**（`9107` / `9108` 两个数据根，管理员与成员两个身份）：四张截图逐张看过 —— 列表卡片
+  （「Pixel 8 / USB / 87%」与状态行）、展开后的四节读数与审计、权限弹窗、配对弹窗（二维码 + 配对码）。
+  管理员视角 console **0 error**、`pageerror` **0 条**、HTTP 4xx **0 条**；成员视角有一条
+  `GET /api/projects/default_project/machines` 的 **403**，是既有的权限行为（第三百六十二轮记过同一条），
+  与本笔无关。截图在会话 scratchpad 的 `r366/`，没有进仓库。
+- `pnpm --filter …core --filter …server --filter …web --filter …ui --filter …cli --filter …hmr run typecheck`
+  **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json
+  unchanged`，215 接口 / 648 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **71 文件 / 1469 通过 / 6 跳过** · ui **133 / 1119** ·
+  server **226 / 3264 / 6 跳过** · cli **40 / 575** · web **375 / 4150 / 2 跳过** —— 与第三百六十五轮的
+  基线逐个相同（本笔只加 e2e，不进 vitest）。
+- `oxlint` 两个改动文件 **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
+- 端口只用 **9107 / 9108**（真服务端），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r366-H7pnyC` 与 `r366b-fpmuA2` 两个临时根，探针 / 截图 / 日志都在会话
+  scratchpad 的 `r366/` 下。
+
+### 没做 / 留着
+
+- **没有跑整套 e2e**（两百多条）：本笔只加一条 spec，跑的是它在「空数据根 + 真服务端」上的三次
+  （其中两次同一数据根）。整套的运行时间与历史 flaky 不在这一条里；推上去之后 CI 会跑整套。
+- Windows 的命名管道端点这条 spec 不覆盖（`run.sh` 本来就只在 POSIX 上跑，README 写明）。
+- 界面里看到两处小瑕疵，这轮只记不做（都不在「设备页要有用例」这一条里）：①桥掉线时卡片上那枚徽标
+  写的是硬编码的英文 `bridge`，中文界面里显得突兀；②审计行直接显示审计动作的原始标识（`paired` /
+  `grant_project` / `bridge_lost`），中英混排。两件都要动 `strings` 与页面，单独一条更干净。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 本笔 **`644b65748`**（`packages/web/e2e/devices.spec.mjs`、`packages/web/e2e/README.md`）；台账
+  （条目 7.234、上表那一行、本节）随本文件另起一笔。
