@@ -4140,6 +4140,13 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       一个新文件、`packages/web/e2e/README.md` 一段 —— 用例自己当设备桥，按协议发 `hello` / `devices` /
       `snapshot` 并回 `command`，**产品代码一个字节没动、无新依赖**）：`/devices`（侧栏「设备」，0.8.8 随包
       发的）此前**零界面验证** —— `packages/web/test` 里没有 devices，`e2e/` 里也没有一条。见「第三百六十六轮」一节。
+- [x] **7.235 设备页的审计行与桥掉线徽标说人话：动作名、`system`、拒绝原因都按界面语言**
+      （**2026-11-28 第三百六十七轮**落地，提交见「已完成的轮次」；第三百六十六轮「没做 / 留着」里记下的
+      两处小瑕疵合成这一条 —— 折叠卡上那枚写死英文 `bridge` 的徽标、审计行直接画写入方的标识
+      （`paired` / `shell:denied` / `bridge_lost`，以及上报的状态名）；`packages/web` 六个文件：新纯逻辑
+      `features/devices/audit-label.ts` ＋ 单测 6 条、两本字典各一份动作表与 `bridgeBadge`、页面三处调用、
+      `e2e/devices.spec.mjs` 那条断言改成页面上的词；**无新依赖、不碰接口**）：中文界面里中英混排是这一页
+      唯一剩下的界面问题，未知标识退回原样 —— 审计是这台手机唯一的记录，藏了就等于没记。见「第三百六十七轮」一节。
 
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
@@ -7406,6 +7413,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-28 | 7.232 | **`main` 的 CI 三处红：手机桥的两套用例在 Windows 上跑不起来、`phone.js` 没格式化**（**2026-11-28 第三百六十四轮**落地；4 个文件、全是夹具与格式：`packages/device-adb/test/bridge.test.ts` 的端点改走 `bridgeEndpoint(dir, path.basename(dir), process.platform)` 并先建 socket 目录、`packages/server/test/devices-bridge.test.ts` 不再覆盖端点（`endpoint = hub.address()`）且「没留下 socket」只在 POSIX 断言、`packages/device-adb/test/adb-script.test.ts` 的「真可执行文件」一组在 win32 上 `describe.skipIf`、`android/app/src/main/assets/phone.js` 过 prettier —— **不碰产品行为、不碰接口、无新依赖**）：CI `46079022099`（`22a9d924e`）红的 `style (prettier)` / `test-windows (rest)` / `test-windows (server-1)` 三个作业，根因是以普通路径当端点（Windows 上是 EACCES，`\\.\pipe\…` 才有名字）、假 adb 是 `#!/bin/sh`（Node 不许无 shell 跑 `.cmd`，而 runner 又是无 shell 起的）、单引号资产 | 七包 `typecheck` **`EXIT=0`**（device-adb / core / ui / hmr / server / cli / web 七个 `Done`）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 全仓 `pnpm format:check` **干净** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：device-adb **6 文件 / 63**（改前 1 文件因 `listen EACCES` 整份报错、57 通过 6 跳过，即本地复现出来的同一条）· core **71 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过**（其中 `devices-bridge` 4 条）· web **375 / 4150 + 2 跳过** · 本机是 Linux，Windows 那一侧真正算数的是推上去之后重跑的 `test-windows (rest)` / `test-windows (server-1)` —— run `46080987913`（`2c2f634df`）**22 个作业全绿**，上一 run 红的 `style` / `test-windows (rest)` / `test-windows (server-1)` 三个都在里面 · 端口一个没起、3003 / 3004 / 4000 / 7364 / 7369 一个没碰 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-28 | 7.233 | **「Agent 的第一个工作流」那条用例等的是成功的那次加载，重试也不再撞 `agent_exists`**（**2026-11-28 第三百六十五轮**落地；`packages/server/test/workflows.test.ts` 一个文件 —— 等待条件从「status.json 出现」改成「status.json 说这次加载成功」、轮询上限 100 → 200 次，这个用例自己新建的 Agent 按尝试取名（`builder1` / `builder2`…），注释写明为什么；**不碰产品行为、不碰接口、无新依赖**）：`test-macos (server)` 自 2026-10-16 起间歇红在这一条，`46056204561` 读到的是 `{ok:false, error:"no index.ts next to package.json"}`、`46091152754`（`16c94e768`）读到的是 `{}`，两形状同源 —— 监听到 `workflows/` 一出现就加载而 Agent 还在逐个写文件，第一次加载按「package.json 旁边没有 index.ts」失败并写进 status.json（这是设计里的路径：下一次保存重载），用例却把「文件出现」当成答案；重试那一次又撞 `409 agent_exists`。改前本机用「写完 package.json 停 500 ms」的探针复现出同一对失败（`--retry 1`：第一次 `ok:false`、第二次 `409`），改后同一探针两次都是绿的 | 改前/改后探针各两跑（见「第三百六十五轮」一节）；`pnpm typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）；逐包 test **`EXIT=0`、0 失败**：core **71 文件 / 1469 + 6 跳过** · ui **133 / 1119** · cli **40 / 575** · server **226 / 3264 + 6 跳过** · web **375 / 4150 + 2 跳过**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；本机是 Linux，macOS 那一侧算数的是推上去之后的 `test-macos (server)` | `62693e5be` |
 | 2026-11-28 | 7.234 | **设备页有了真浏览器用例：假桥连数据根的 socket，一张卡、它的读数、配对码与成员视角**（**2026-11-28 第三百六十六轮**落地；`packages/web/e2e/devices.spec.mjs` 一个新文件 + e2e 目录 README 一段 —— 用例自己当设备桥（`run/device-bridge.sock` 上的 JSON lines：`hello` / `devices` / `snapshot`，并回服务端发来的 `command`），三条用例覆盖管理员读卡片与展开、`pair.wifi.start` 换来的二维码、成员视角没有管理员动作且截图与通知禁用；**不碰产品代码、不碰接口、无新依赖**）：`/devices` 是 0.8.8 随包发的页面，此前 `packages/web/test` 与 `e2e/` 都没有一处覆盖，它的数据又只来自设备桥 —— 一条真浏览器用例把「socket → 注册表 → 视图」整条链钉住 | 改后 e2e **3 passed**（`9108` 空数据根两次、`9107` 一次；`devices.spec.mjs` 4.6 s）；真浏览器截图四张（列表 / 展开 / 权限弹窗 / 配对二维码）逐张看过，管理员视角 console **0 error**、`pageerror` **0 条**；成员视角有一条既有的 `GET …/machines` 403（权限行为，第三百六十二轮记过，与本笔无关）；`pnpm typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）；逐包 test **`EXIT=0`、0 失败**：core **71 / 1469 + 6 跳过** · ui **133 / 1119** · server **226 / 3264 + 6 跳过** · cli **40 / 575** · web **375 / 4150 + 2 跳过**（与第三百六十五轮基线逐个相同）；`oxlint` 改动文件 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；端口只用 9107 / 9108，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；CI 里 `installer-e2e` 的 e2e 步骤因 `DEEPSEEK_API_KEY` 为空被跳过（CI 从不跑整套 e2e），所以这一条的验收只来自本机那三次真浏览器运行；CI run `46120107110`（`dbd0afc6e`）**21 个作业全绿**（含 `test-windows (rest)` 收尾那一笔，无红点） | `644b65748` |
+| 2026-11-28 | 7.235 | **设备页的审计行与桥掉线徽标说人话：动作名、`system`、拒绝原因都按界面语言**（**2026-11-28 第三百六十七轮**落地；`packages/web` 六个文件：新纯逻辑 `features/devices/audit-label.ts`（动作表 → 上报状态 → 原样三级退回，`:denied` / `:needs-approval` 两种拒绝保留基名再加原因，actor `system` 按语言说）、新单测 6 条、两本字典各一份动作表与 `bridgeBadge`、页面三处调用、`devices.spec.mjs` 那条断言改成页面上的词；**无新依赖、不碰接口**）：中文界面里 `paired` / `shell:denied` / `bridge_lost` 与「最近操作」并排，折叠卡上还有一枚写死英文的 `bridge` 徽标 —— 第三百六十六轮记下的两处小瑕疵 | 改前 e2e 断言的是 `getByText("paired")`；改后同一 spec **3 passed**（`9120` 真服务端、数据根 `r367-5t1K0y`）；真浏览器探针三态（首次上报 / `shell:denied` / 桥断开）中英各跑一遍 —— `接入`·`系统`·`执行命令（被拒绝）`·`桥接离线`·`设备桥断开` 与英文 `Reported`·`Bridge offline`·`Bridge disconnected` 逐个为真、原始标识一个不剩，console **0 error**、`pageerror` **0 条**，四张截图逐张看过；`pnpm typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）；逐包 test **`EXIT=0`、0 失败**：core **71 / 1469 + 6 跳过** · ui **133 / 1119** · server **226 / 3264 + 6 跳过** · cli **40 / 575** · web **376 / 4156 + 2 跳过**（比第三百六十六轮多 1 个文件 / 6 条，正是本笔单测）；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；端口只用 9120，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ed1cf7117` |
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
 > （14 个文件），当时正跑 `pnpm -r test`。本轮**一个文件都没碰、也没硬上**，等它推完 `d03446df` /
@@ -36751,3 +36759,79 @@ underscores only`），改成 `deviceviewer`。两次都是用例自己的问题
 
 - 本笔 **`644b65748`**（`packages/web/e2e/devices.spec.mjs`、`packages/web/e2e/README.md`）；台账
   （条目 7.234、上表那一行、本节）随本文件另起一笔。
+
+## 第三百六十七轮：设备页的审计行与桥掉线徽标说人话 —— 动作名、系统、拒绝原因都按界面语言（2026-11-28，条目 7.235）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `7fcb45937`（第三百六十六轮的台账补记）；
+`git fetch origin && git merge --ff-only origin/main` 一次即通、无内容（已是最新；没有切分支、没碰
+`legacy/main`、也没推 upstream）。`ps` 里没有别的 vitest / tsc / pnpm，只有一个九小时前起的
+`pnpm dev:gallery`（前台会话留下的画廊开发服务器，不写 git，不理它）。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、
+3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板 / 新依赖），第 7 节到 7.234 全勾。于是收第三百六十六轮
+「没做 / 留着」里自己记下的两处小瑕疵 —— **它们其实是一件事**：设备页上不该出现的英文标识。折叠卡上
+那枚徽标写死 `bridge`；展开后的审计行直接画服务端写进库的标识（`paired`、`grant_project`、
+`bridge_lost`、`shell:denied`，以及上报的状态名 `online` / `offline`），actor 一列则常常是 `system`。
+中文界面里中英混排，读者认不出那两三个词是什么。
+
+**做了什么**（`packages/web` 六个文件，无新依赖、不碰接口、不碰服务端）：
+
+- `src/features/devices/audit-label.ts`（新，纯逻辑）：`auditActionLabel(action, kind)` 按「动作表 →
+  上报状态的那一套词 → 原样」三级退回；`<action>:denied` 与 `<action>:needs-approval` 两种拒绝保留
+  基名再加原因（服务端就是这么拼的，见 `services/devices/service.ts`）；`auditActorLabel(actor)` 把
+  `system`（以及没有 actor）说成「系统」。**为什么未知标识要退回原样**：审计是这台手机唯一的记录机会，
+  桥可能上报这套代码没见过的事件名，藏掉它就等于没记。查表在每次调用时做（`S` 是语言切换时换的活绑定）。
+- 两本字典各加一份 `devices.audit.actions`（服务端会写的 19 个动作）、`denied` / `needsApproval` 两个
+  格式函数、`audit.bySystem`，以及 `devices.bridgeBadge`（「桥接离线」/「Bridge offline」）。
+- `features/devices/devices-page.tsx` 三处：徽标、动作列、actor 列。
+- `test/devices-audit-label.test.ts`（新，6 条）：服务端会写的每个动作在中英两本里都渲染成表里那句、
+  且不等于标识本身；上报状态读成卡片上那一套词；两种拒绝的拼法；不认识的基名也要带上拒绝原因；
+  未知标识与「没有 action 时退回 kind」；actor `system` / 空值。
+- `e2e/devices.spec.mjs`：那条断言原本写的是 `getByText("paired")`（等于把「画原始标识」钉成了正确
+  行为），改成页面上的词，并把「系统」按整行匹配 —— 概览里 `platform` 那个字段标签也叫「系统」。
+
+**改前 / 改后实测**：
+
+- 改前：同一份 spec 的断言就是 `paired`；本轮的探针在改后的页面上 `raw paired = false`、
+  `raw shell:denied = false`、`raw bridge = false` —— 三个原始标识都不再出现在界面上。
+- 真浏览器探针（`r367/probe.mjs`，假桥连数据根的 socket）：**三态 × 两种语言**。
+  ① 桥刚上报时展开卡片：「接入」「系统」在、`paired` 不在；② 桥上报一条 `shell:denied` 事件后重载：
+  「执行命令（被拒绝）」在、`shell:denied` 不在；③ 关掉桥的 socket 后重载：卡片上出现「桥接离线」徽标、
+  审计算行出现「设备桥断开」，页面顶部同时给出既有的「设备桥没有连上」提示。英文一遍（把
+  `penguin.lang` 设成 `en`）：`Reported` / `Bridge offline` / `Ran a shell command (denied)` /
+  `Bridge disconnected` 同样逐个为真。console **0 error**、`pageerror` **0 条**；截图
+  `1-trail` / `2-denied` / `3-bridge-lost` 在会话 scratchpad 的 `r367/`，没进仓库。
+
+### 验证
+
+- 设备页 e2e 对**运行中的真服务端**（`9120`，数据根 `/root/adelie-fork-data/r367-5t1K0y`）跑
+  `devices.spec.mjs`：先按它的三条用例跑 → **3 passed / 4.6 s**（同一数据根可重跑，与上一轮记的幂等性一致）。
+  这条 spec 第一次跑红在「系统」那一句 —— 概览的字段标签也叫「系统」，`getByText` 同时命中两个；
+  改成按审计那一行整体匹配后通过（用例自己的问题，产品侧正常渲染）。
+- `pnpm --filter …core --filter …server --filter …web --filter …ui --filter …cli --filter …hmr run typecheck`
+  **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，215 接口 / 648 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **71 文件 / 1469 通过 / 6 跳过** · ui **133 / 1119** ·
+  server **226 / 3264 / 6 跳过** · cli **40 / 575** · web **376 / 4156 / 2 跳过** —— 前四个与第三百六十六轮
+  逐个相同，web 多出来的 1 个文件 / 6 条正是本笔的单测。
+- `oxlint` 改动文件 **0 警告 0 错误**；`prettier --check` 干净（`devices-page.tsx` 先被 `--write` 排过一行）；
+  `git diff --check` 干净。
+- 端口只用 **9120**（真服务端）+ 探针自己的浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r367-5t1K0y` 一个临时根，探针 / 截图 / 服务端日志都在会话 scratchpad 的 `r367/` 下。
+
+### 没做 / 留着
+
+- 桥掉线那条路现在只有探针的证据，`e2e/` 里还没有一条用例（`devices.spec.mjs` 的桥在 `beforeAll` 里
+  连一次、三条用例共用，最后一条关掉它会牵连后面的用例）。要做就在文件末尾加一条「桥走了」的用例、
+  自己连一次再关，单独一轮更干净。
+- 整页仍没有 vitest 覆盖（第三百六十六轮记过同一件事）；本轮只给纯逻辑加了单测。
+- 设备页上还有别的英文标识没本地化（能力标识 `info:read` 之类在权限弹窗里作为副行显示，那是**故意**的：
+  那一行就是给人看协议的原文）。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 本笔 **`ed1cf7117`**（`packages/web/src/features/devices/audit-label.ts`、`devices-page.tsx`、
+  `src/lib/strings.ts`、`src/lib/strings-en.ts`、`test/devices-audit-label.test.ts`、`e2e/devices.spec.mjs`）；
+  台账（条目 7.235、上表那一行、本节）随本文件另起一笔。
